@@ -1,0 +1,88 @@
+.scrollable {
+  overflow: hidden;
+  position: relative;
+}
+.scrollable .one-scrolltrack {
+  position: absolute;
+  border: solid #ccc;
+  border: 0;
+  opacity: 0.01;
+  -webkit-transition: opacity .2s, width 0.2s, height 0.2s;
+  -moz-transition: opacity .2s, width 0.2s, height 0.2s;
+  -ms-transition: opacity .2s, width 0.2s, height 0.2s;
+  -o-transition: opacity .2s, width 0.2s, height 0.2s;
+  -webkit-border-radius: 5px;
+  -moz-border-radius: 5px;
+  border-radius: 5px;
+}
+.scrollable .one-scrolltrack .one-scrollgrip {
+  position: absolute;
+  background-color: #000;
+  -webkit-border-radius: 5px;
+  -moz-border-radius: 5px;
+  border-radius: 5px;
+  -moz-background-clip: padding;
+  -webkit-background-clip: padding-box;
+  background-clip: padding-box;
+}
+.scrollable .one-scrolltrack.vertical {
+  left: auto;
+  top: 2px;
+  bottom: 2px;
+  right: 2px;
+  width: 8px;
+  height: auto;
+}
+.scrollable .one-scrolltrack.vertical .one-scrollgrip {
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: auto;
+  width: auto;
+  height: 14px;
+}
+.scrollable .one-scrolltrack.horizontal {
+  top: auto;
+  left: 2px;
+  bottom: 2px;
+  right: 2px;
+  height: 8px;
+  width: auto;
+}
+.scrollable .one-scrolltrack.horizontal .one-scrollgrip {
+  left: 0;
+  top: 0;
+  right: auto;
+  bottom: 0;
+  width: 14px;
+  height: auto;
+}
+.scrollable.one-vscrollable.hot > .one-scrolltrack.vertical,
+.scrollable.one-vscrollable.engaged > .one-scrolltrack.vertical {
+  opacity: .6;
+}
+.scrollable.one-vscrollable .one-scrolltrack.vertical:hover,
+.scrollable.one-vscrollable .one-scrolltrack.vertical.active {
+  background: rgba(127, 127, 127, 0.8);
+  width: 12px;
+  opacity: 1;
+}
+.scrollable.one-hscrollable.hot > .one-scrolltrack.horizontal,
+.scrollable.one-hscrollable.engaged > .one-scrolltrack.horizontal {
+  opacity: .6;
+}
+.scrollable.one-hscrollable .one-scrolltrack.horizontal:hover,
+.scrollable.one-hscrollable .one-scrolltrack.horizontal.active {
+  background: rgba(127, 127, 127, 0.8);
+  height: 12px;
+  opacity: 1;
+}
+.scrollable .one-scroller {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: scroll;
+  z-index: 0;
+  bottom: -18px;
+  right: -18px;
+}

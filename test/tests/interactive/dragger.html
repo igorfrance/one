@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<!--suppress HtmlUnknownTarget -->
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+	<head>
+		<title>Dragger</title>
+		<script type="text/javascript" src="../../lib/jquery-2.0.3.min.js"></script>
+		<script type="text/javascript" src="../../lib/qunit-1.11.0.js"></script>
+		<script type="text/javascript" src="../../../dist/one.js"></script>
+		<link rel="stylesheet" href="../../css/test.css"/>
+		<link rel="stylesheet" href="../../lib/qunit-1.11.0.css"/>
+		<style>
+
+			.testing-area
+				{ height: 200px; }
+			.testing-area .drag1
+				{ position: absolute; top: 10px; left: 10px; width: 150px; height: 50px;
+				  background: #fc0; opacity: .7; cursor: move; z-index: 1; }
+			.testing-area .drag2
+				{ position: absolute; top: 30px; left: 70px; width: 150px; height: 50px;
+				  background: #cf0; opacity: .7; cursor: move; z-index: 1; }
+			.testing-area .drag3
+				{ position: absolute; top: 20px; left: 50px; width: 150px; height: 50px;
+				  background: #c0f; opacity: .7; cursor: move; z-index: 1; }
+			.testing-area .log
+				{ position: absolute; z-index: 0; width: 200px; height: 18px; padding: 1px 2px;
+				  right: 10px; bottom: 10px; border: 1px solid #ccc; font-size: 12px; }
+
+		</style>
+	</head>
+	<body>
+		<div id="wrapper">
+			<div id="container">
+				<h1 id="qunit-header">Dragger</h1>
+				<h2 id="qunit-banner"></h2>
+				<h2 id="qunit-fixture"></h2>
+				<div class="testing-area">
+				</div>
+				<div id="qunit-testrunner-toolbar"></div>
+				<h2 id="qunit-userAgent"></h2>
+				<p id="qunit-testresult"></p>
+				<ol id="qunit-tests"></ol>
+				<script>
+
+					$(function runTests()
+					{
+						var testingArea = $(".testing-area");
+						if (testingArea.length == 0)
+						{
+							testingArea = $("<div class='testing-area'/>").appendTo("body");
+						}
+
+						testingArea.append('<div class="drag drag1"/>');
+						testingArea.append('<div class="drag drag2"/>');
+						testingArea.append('<div class="drag drag3"/>');
+						testingArea.append('<div class="log"/>');
+
+						function onDraggerMouseDown(e)
+						{
+							this.currentZ = $(this).css("zIndex");
+							$(this).css("zIndex", Math.max.apply(this, $(".drag").map(function ()
+							{
+								return parseInt($(this).css("zIndex")) || 0;
+
+							})) + 1);
+
+							one.drag.start(e, this, true, true);
+						}
+
+						function onDraggerMouseUp()
+						{
+							$(this).css("zIndex", this.currentZ);
+							console.log("Mouse up!");
+						}
+
+						function onDragStart()
+						{
+							$(".log").text("Start drag");
+						}
+
+						function onDragStop()
+						{
+							$(".log").text("Stop drag");
+						}
+
+						function onDragMove()
+						{
+							$(".log").text("Stop drag");
+						}
+
+						$(".drag")
+							.on("mousedown", onDraggerMouseDown)
+							.on("mouseup", onDraggerMouseUp);
+
+						one.drag.on("start", onDragStart);
+						one.drag.on("stop", onDragStop);
+						one.drag.on("move", onDragMove);
+
+						test("aeon.utils.drag", function testTooltip()
+						{
+							var log = $(".log");
+							var d1 = $(".drag1");
+
+							d1.trigger("mousedown");
+							equal(log.text(), "Start drag");
+							one.drag.stop();
+							equal(log.text(), "Stop drag");
+						});
+					});
+
+
+				</script>
+			</div>
+		</div>
+	</body>
+</html>

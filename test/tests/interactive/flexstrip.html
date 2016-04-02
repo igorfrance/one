@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head>
+		<title>FlexStrip</title>
+		<meta charset="utf-8"/>
+		<script type="text/javascript" src="../../lib/jquery-2.0.3.min.js"></script>
+		<script type="text/javascript" src="../../lib/jquery.velocity.min.js"></script>
+		<script type="text/javascript" src="../../lib/qunit-1.11.0.js"></script>
+		<script type="text/javascript" src="../../../dist/one.js"></script>
+		<script type="text/javascript" src="../../../src/controls/flexstrip/flexstrip.js"></script>
+		<link rel="stylesheet" href="../../css/test.css"/>
+		<link rel="stylesheet" href="../../lib/qunit-1.11.0.css"/>
+		<style>
+
+			.testing-area *
+			{
+				box-sizing: border-box;
+			}
+			.testing-area .example
+			{
+				overflow: hidden; margin-bottom: 5px;
+			}
+			.testing-area .example.header
+			{
+				background: #5f5f5f; color: #fff; margin: -10px -10px 20px -10px; height: auto; padding: 5px 10px;
+			}
+			.testing-area .example.tall .control
+			{
+				height: 200px; margin-bottom: 20px;
+			}
+			.testing-area .example.split .control.horizontal
+			{
+				float: left; width: 50%; overflow: hidden;
+				position: relative; margin-right: 1%;
+			}
+			.testing-area .example.split .control.vertical
+			{
+				float: left; width: 20%; overflow: hidden;
+				position: relative; margin-right: 1%;
+			}
+			.testing-area .example.split .settings
+			{
+				float: left; width: 28%; overflow: hidden;
+			}
+			.testing-area .example .code
+			{
+				padding-left: 10px;
+			}
+			.testing-area footer
+			{
+				clear: both; overflow: hidden; margin-bottom: 20px;
+			}
+			.testing-area footer .remarks
+			{
+				float: left;
+			}
+			.testing-area footer .controls
+			{
+				float: right;
+			}
+			.example .settings ul
+			{
+				padding: 0; margin: 0; list-style-type: none;
+				font-size: 12px; font-family: Courier, monospace;
+			}
+
+			.settings label
+			{
+				top: -3px; position: relative;
+			}
+
+			.flexstrip
+				{ background: #000; }
+			.flexstrip img
+				{ float: left; margin: 0 2px 0 0; }
+			.flexstrip img:last-child
+				{ margin: 0; }
+			.flexstrip.vertical img
+				{ float: left; margin: 0 0 2px 0; width: 100%; }
+			.flexstrip.vertical img:last-child
+				{ margin: 0; }
+			.flexstrip table
+				{ width: 100%; height: 100%; float: left; border-collapse: collapse; border-spacing: 0; }
+			.flexstrip table img
+				{ width: 100%; height: 50%; margin: 0; }
+
+			.flexstrip-arrow
+			{
+				position: absolute; width: 20px; height: 20px;
+				background-color: rgba(255, 255, 255, .7);
+				color: #000;
+				cursor: pointer; visibility: hidden; opacity: 0; z-index: 10;
+				transition: visibility .3s, opacity .3s;
+				user-select: none; text-align: center;
+			}
+
+			.flexstrip-arrow.visible
+				{ visibility: visible; opacity: 1; }
+			.flexstrip-arrow.prev
+				{ left: 0; top: 45%; }
+			.flexstrip-arrow.prev:before
+				{ content: "←"; }
+			.flexstrip-arrow.prev.vertical
+				{ left: 45%; top: 0; }
+			.flexstrip-arrow.prev.vertical:before
+				{ content: "↑"; }
+			.flexstrip-arrow.next
+				{ right: 0; top: 45%; }
+			.flexstrip-arrow.next:before
+				{ content: "→"; }
+			.flexstrip-arrow.next.vertical
+				{ left: 45%; bottom: 0; right: auto; top: auto; }
+			.flexstrip-arrow.next.vertical:before
+				{ content: "↓"; }
+
+			.one-scrolltrack
+			{
+				position: absolute; border: solid #ccc;
+			  border: 0; opacity: 0.01;
+			  -webkit-transition: opacity .2s, width 0.2s, height 0.2s;
+			  -moz-transition: opacity .2s, width 0.2s, height 0.2s;
+			  -ms-transition: opacity .2s, width 0.2s, height 0.2s;
+			  -o-transition: opacity .2s, width 0.2s, height 0.2s;
+				-webkit-border-radius: 5px; -moz-border-radius: 5px; border-radius: 5px;
+			}
+
+			.one-scrolltrack.vertical
+			{
+				left: auto; top: 2px; bottom: 2px; right: 2px; width: 8px; height: auto;
+			}
+
+			.one-scrolltrack.horizontal
+			{
+				top: auto; left: 2px; bottom: 2px; right: 2px; height: 8px; width: auto;
+			}
+
+			.one-scrollgrip
+			{
+				position: absolute;
+				background-color: #000; -webkit-border-radius: 5px; -moz-border-radius: 5px; border-radius: 5px;
+			  -moz-background-clip: padding; -webkit-background-clip: padding-box; background-clip: padding-box;
+			}
+
+			.one-scrolltrack.vertical .one-scrollgrip
+				{ left: 0; top: 0; right: 0; bottom: auto; width: auto; height: 14px; }
+			.one-scrolltrack.horizontal .one-scrollgrip
+				{ left: 0; top: 0; right: auto; bottom: 0; width: 14px; height: auto; }
+
+			/*.one-scrolltrack.one-vscrollable.hot > .one-scrolltrack.vertical,
+			.one-scrolltrack.one-vscrollable.engaged > .one-scrolltrack.vertical
+				{ opacity: .6; }
+			.one-scrolltrack.one-vscrollable .one-scrolltrack.vertical:hover,
+			.one-scrolltrack.one-vscrollable .one-scrolltrack.vertical.active
+			{
+				background: rgba(127, 127, 127, .8); width: 12px;
+				opacity: 1;
+			}
+
+			.one-scrolltrack.one-hscrollable.hot > .one-scrolltrack.horizontal,
+			.one-scrolltrack.one-hscrollable.engaged > .one-scrolltrack.horizontal
+				{ opacity: .6; }
+
+			.one-scrolltrack.one-hscrollable .one-scrolltrack.horizontal:hover,
+			.one-scrolltrack.one-hscrollable .one-scrolltrack.horizontal.active
+			{
+				background: rgba(127, 127, 127, .8); height: 12px;
+				opacity: 1;
+			}*/
+
+		</style>
+	</head>
+	<body>
+		<div id="wrapper">
+			<div id="container">
+				<div id="qunit-fixture"></div>
+				<h1 id="qunit-header">FlexStrip</h1>
+				<h2 id="qunit-banner"></h2>
+				<div class="documentation">
+					<p class="summary">
+						Provides a versatile control that manages handling of content that exceeds the available space.
+					</p>
+					<div class="settings">
+						<h5>Settings:</h5>
+						<ul>
+							<li>
+								<h6><span class="title">mode</span> (String, default: <span class="code">"free"</span>)</h6>
+								<p>This setting controls the behavior of the control. Possible values are:</p>
+								<ol>
+									<li>"free" - The free mode allows the most flexibility, and the control can be positioned as required, within container bounds.</li>
+									<li>"slide" - The slide mode is intended for slides of unequal size. The control will always be positioned at one of the snap points</li>
+									<li>"page" - The page mode is intended for slides that are all equal to thhe size of the container, and can therefore be viewed only one at a time.</li>
+								</ol>
+							</li>
+							<li>
+								<h6><span class="title">vertical</span> (Boolean, default: <span class="code">false</span>)</h6>
+								<p>Toggles the orientation of the control to vertical</p>
+							</li>
+							<li>
+								<h6><span class="title">mouseDraggable</span> (Boolean, default: <span class="code">true</span>)</h6>
+								<p>If set to true, the control can be moved by pressing and dragging the mouse, regardless of other settings. The motion is still constrained with respect to other settings.</p>
+							</li>
+							<li>
+								<h6><span class="title">mouseScrollable</span> (Boolean, default: <span class="code">true</span>)</h6>
+								<p>If set to true, the control will listen to mousewheel events and will reposition itself in response to the scroll.</p>
+							</li>
+							<li>
+								<h6><span class="title">snapToItems</span> (Boolean, default: <span class="code">false</span>)</h6>
+								<p>If set to <code>true</code>, the control will snap to child item edges when dragging.</p>
+							</li>
+							<li>
+								<h6><span class="title">snapDistance</span> (Number, default: <span class="code">35</span>)</h6>
+								<p>The maximum distance from the item edge to the start of control for snap to activate.</p>
+							</li>
+							<li>
+								<h6><span class="title">forceSnapPoints</span> (Boolean, default: <span class="code">false</span>)</h6>
+								<p>If set to <code>true</code>, the control will only stop at snap points.</p>
+							</li>
+							<li>
+								<h6><span class="title">autoScroll</span> (Boolean, default: <span class="code">false</span>)</h6>
+								<p>If <span class="code">true</span> and the control exceeds available space, the control will be moved automatically relative to the position of mouse moving above the control.</p>
+							</li>
+							<li>
+								<h6><span class="title">extraLength</span> (Number, default: <span class="code">0</span>)</h6>
+								<p>Specifies the amount of extra space to reserve at both sides of the strip; useful in <span class="code">autoScroll</span> mode</p>
+							</li>
+							<li>
+								<h6><span class="title">dropOnMouseOut</span> (Boolean, default: <span class="code">true</span>)</h6>
+								<p>If <span class="code">true</span>, the dragging will stop if the mouse exits the control area on the page. If <span class="code">false</span>, the dragging will continue until the mouse is released, regardless of its position relative to the control.</p>
+							</li>
+							<li>
+								<h6><span class="title">globalKeyReact</span> (Boolean, default: <span class="code">false</span>)</h6>
+								<p>By default, the control reacts to the arrow keyboard presses (LEFT/RIGHT for horizontal orientation, and UP/DOWN for vertical) when the mouse is above it. If this setting is <code>true</code>, it will react to these key events regardless of where the current mouse position.</p>
+							</li>
+							<li>
+								<h6><span class="title">scrollOnClick</span> (Boolean, default: <span class="code">false</span>)</h6>
+								<p>If <code>true</code>, the control will automatically scroll to the slide that was clicked.</p>
+							</li>
+							<li>
+								<h6><span class="title">arrowsOnHover</span> (Boolean, default: <span class="code">false</span>)</h6>
+								<p>If set to <code>true</code> and the control exceeds the size of the container, it will display the paging arrows when the mouse is the range of the control.</p>
+							</li>
+							<li>
+								<h6><span class="title">animDuration</span> (Number, default: <span class="code">400</span>)</h6>
+								<p>The duration, in milliseconds, of slide scrolling animations.</p>
+							</li>
+							<li>
+								<h6><span class="title">center</span> (Boolean, default: <span class="code">false</span>)</h6>
+								<p>If set to <code>true</code> and the control is shorter that the container, it will be centered within the container.</p>
+							</li>
+							<li>
+								<h6><span class="title">stretch</span> (Boolean, default: <span class="code">false</span>)</h6>
+								<p>If set to <code>true</code> and the control is shorter that the container, it will be stretched to fill the container.</p>
+							</li>
+							<li>
+								<h6><span class="title">distribute</span> (String, default: <span class="code">null</span>)</h6>
+								<p>If this value is used, the control will ensure all slides have the same sizes. There are three possible values:</p>
+								<ol>
+									<li>"largest" - The size of all slides will be set to the size of the largest slide.</li>
+									<li>"smallest" - The size of all slides will be set to the size of the smallest slide.</li>
+									<li>"contain" - The available space is divided by the number of slides, and each slide is assigned that size.</li>
+								</ol>
+							</li>
+						</ul>
+					</div>
+				</div>
+				<div class="testing-area">
+					<div class="example header">
+						Free mode
+					</div>
+					<div class="example split">
+						<div class="control horizontal">Horizontal</div>
+						<div class="control vertical">Vertical</div>
+						<div class="settings">Settings</div>
+					</div>
+					<div class="example split tall">
+						<div class="control horizontal">
+							<div class="flexstrip p" id="flexstrip1" data-useScrollBar="true">
+								<img src="../../images/dogs/underwater-01.jpg"/>
+								<img src="../../images/dogs/underwater-02.jpg"/>
+								<img src="../../images/dogs/underwater-03.jpg"/>
+								<img src="../../images/dogs/underwater-04.jpg"/>
+								<img src="../../images/dogs/underwater-05.jpg"/>
+								<img src="../../images/dogs/underwater-06.jpg"/>
+								<img src="../../images/dogs/underwater-07.jpg"/>
+								<img src="../../images/dogs/underwater-08.jpg"/>
+								<img src="../../images/dogs/underwater-09.jpg"/>
+								<img src="../../images/dogs/underwater-10.jpg"/>
+								<img src="../../images/dogs/underwater-11.jpg"/>
+								<img src="../../images/dogs/underwater-12.jpg"/>
+								<img src="../../images/dogs/underwater-13.jpg"/>
+								<img src="../../images/dogs/underwater-14.jpg"/>
+								<img src="../../images/dogs/underwater-15.jpg"/>
+							</div>
+						</div>
+						<div class="control vertical">
+							<div class="flexstrip vertical" id="flexstrip1a" data-vertical="true">
+								<img src="../../images/dogs/underwater-01.jpg"/>
+								<img src="../../images/dogs/underwater-02.jpg"/>
+								<img src="../../images/dogs/underwater-03.jpg"/>
+								<img src="../../images/dogs/underwater-04.jpg"/>
+								<img src="../../images/dogs/underwater-05.jpg"/>
+								<img src="../../images/dogs/underwater-06.jpg"/>
+								<img src="../../images/dogs/underwater-07.jpg"/>
+								<img src="../../images/dogs/underwater-08.jpg"/>
+								<img src="../../images/dogs/underwater-09.jpg"/>
+								<img src="../../images/dogs/underwater-10.jpg"/>
+								<img src="../../images/dogs/underwater-11.jpg"/>
+								<img src="../../images/dogs/underwater-12.jpg"/>
+								<img src="../../images/dogs/underwater-13.jpg"/>
+								<img src="../../images/dogs/underwater-14.jpg"/>
+								<img src="../../images/dogs/underwater-15.jpg"/>
+							</div>
+						</div>
+						<div class="settings">
+							<ul>
+								<li>
+									<input name="mouseDraggable" type="checkbox" id="c1s1"/>
+									<label for="c1s1">mouseDraggable</label>
+								</li>
+								<li>
+									<input name="mouseScrollable" type="checkbox" id="c1s8"/>
+									<label for="c1s8">mouseScrollable</label>
+								</li>
+								<li>
+									<input name="dropOnMouseOut" type="checkbox" id="c1s2"/>
+									<label for="c1s2">dropOnMouseOut</label>
+								</li>
+								<li>
+									<input name="autoScroll" type="checkbox" id="c1s3"/>
+									<label for="c1s3">autoScroll</label>
+								</li>
+								<li>
+									<input name="snapToItems" type="checkbox" id="c1s4"/>
+									<label for="c1s4">snapToItems</label>
+								</li>
+								<li>
+									<input name="forceSnapPoints" type="checkbox" id="c1s5"/>
+									<label for="c1s5">forceSnapPoints</label>
+								</li>
+								<li>
+									<input name="scrollOnClick" type="checkbox" id="c1s6"/>
+									<label for="c1s6">scrollOnClick</label>
+								</li>
+								<li>
+									<input name="arrowsOnHover" type="checkbox" id="c1s7"/>
+									<label for="c1s7">arrowsOnHover</label>
+								</li>
+								<li>
+									<input name="globalKeyReact" type="checkbox" id="c1s9"/>
+									<label for="c1s9">globalKeyReact</label>
+								</li>
+								<li>
+									<input name="useScrollBar" type="checkbox" id="c1s10"/>
+									<label for="c1s10">useScrollBar</label>
+								</li>
+							</ul>
+						</div>
+					</div>
+					<div class="example header">
+						Slide mode
+					</div>
+					<div class="example split">
+						<div class="control horizontal">Horizontal</div>
+						<div class="control vertical">Vertical</div>
+						<div class="settings">Settings</div>
+					</div>
+					<div class="example split tall">
+						<div class="control horizontal">
+							<div class="flexstrip" id="flexstrip2" data-mode="slide">
+								<img src="../../images/dogs/underwater-15.jpg"/>
+								<img src="../../images/dogs/underwater-14.jpg"/>
+								<img src="../../images/dogs/underwater-13.jpg"/>
+								<img src="../../images/dogs/underwater-12.jpg"/>
+								<img src="../../images/dogs/underwater-11.jpg"/>
+								<img src="../../images/dogs/underwater-10.jpg"/>
+								<img src="../../images/dogs/underwater-09.jpg"/>
+								<img src="../../images/dogs/underwater-08.jpg"/>
+								<img src="../../images/dogs/underwater-07.jpg"/>
+								<img src="../../images/dogs/underwater-06.jpg"/>
+								<img src="../../images/dogs/underwater-05.jpg"/>
+								<img src="../../images/dogs/underwater-04.jpg"/>
+								<img src="../../images/dogs/underwater-03.jpg"/>
+								<img src="../../images/dogs/underwater-02.jpg"/>
+								<img src="../../images/dogs/underwater-01.jpg"/>
+							</div>
+						</div>
+						<div class="control vertical">
+							<div class="flexstrip vertical" id="flexstrip2a" data-vertical="true" data-mode="slide">
+								<img src="../../images/dogs/underwater-15.jpg"/>
+								<img src="../../images/dogs/underwater-14.jpg"/>
+								<img src="../../images/dogs/underwater-13.jpg"/>
+								<img src="../../images/dogs/underwater-12.jpg"/>
+								<img src="../../images/dogs/underwater-11.jpg"/>
+								<img src="../../images/dogs/underwater-10.jpg"/>
+								<img src="../../images/dogs/underwater-09.jpg"/>
+								<img src="../../images/dogs/underwater-08.jpg"/>
+								<img src="../../images/dogs/underwater-07.jpg"/>
+								<img src="../../images/dogs/underwater-06.jpg"/>
+								<img src="../../images/dogs/underwater-05.jpg"/>
+								<img src="../../images/dogs/underwater-04.jpg"/>
+								<img src="../../images/dogs/underwater-03.jpg"/>
+								<img src="../../images/dogs/underwater-02.jpg"/>
+								<img src="../../images/dogs/underwater-01.jpg"/>
+							</div>
+						</div>
+						<div class="settings">
+							<ul>
+								<li>
+									<input name="mouseDraggable" type="checkbox" id="c3s1"/>
+									<label for="c3s1">mouseDraggable</label>
+								</li>
+								<li>
+									<input name="mouseScrollable" type="checkbox" id="c3s9"/>
+									<label for="c3s9">mouseScrollable</label>
+								</li>
+								<li>
+									<input name="dropOnMouseOut" type="checkbox" id="c3s2"/>
+									<label for="c3s2">dropOnMouseOut</label>
+								</li>
+								<li>
+									<input name="snapToItems" type="checkbox" id="c3s4"/>
+									<label for="c3s4">snapToItems</label>
+								</li>
+								<li>
+									<input name="forceSnapPoints" type="checkbox" id="c3s5"/>
+									<label for="c3s5">forceSnapPoints</label>
+								</li>
+								<li>
+									<input name="scrollOnClick" type="checkbox" id="c3s6"/>
+									<label for="c3s6">scrollOnClick</label>
+								</li>
+								<li>
+									<input name="arrowsOnHover" type="checkbox" id="c3s7"/>
+									<label for="c3s7">arrowsOnHover</label>
+								</li>
+								<li>
+									<input name="globalKeyReact" type="checkbox" id="c3s8"/>
+									<label for="c3s8">globalKeyReact</label>
+								</li>
+							</ul>
+						</div>
+						<footer>
+							<div class="controls">
+								<a href="javascript:prevSlide()">prev slide</a>
+								<a href="javascript:nextSlide()">next slide</a>
+							</div>
+						</footer>
+					</div>
+					<div class="example header">
+						Page mode
+					</div>
+					<div class="example split">
+						<div class="control horizontal">Horizontal</div>
+						<div class="control vertical">Vertical</div>
+						<div class="settings">Settings</div>
+					</div>
+					<div class="example split tall">
+						<div class="control horizontal">
+							<div class="flexstrip" id="flexstrip3" data-mode="page">
+								<table>
+									<tr>
+										<td><img src="../../images/dogs/underwater-01.jpg"/></td>
+										<td><img src="../../images/dogs/underwater-02.jpg"/></td>
+									</tr>
+									<tr>
+										<td><img src="../../images/dogs/underwater-03.jpg"/></td>
+										<td><img src="../../images/dogs/underwater-04.jpg"/></td>
+									</tr>
+								</table>
+								<table>
+									<tr>
+										<td><img src="../../images/dogs/underwater-05.jpg"/></td>
+										<td><img src="../../images/dogs/underwater-06.jpg"/></td>
+									</tr>
+									<tr>
+										<td><img src="../../images/dogs/underwater-07.jpg"/></td>
+										<td><img src="../../images/dogs/underwater-08.jpg"/></td>
+									</tr>
+								</table>
+								<table>
+									<tr>
+										<td><img src="../../images/dogs/underwater-09.jpg"/></td>
+										<td><img src="../../images/dogs/underwater-10.jpg"/></td>
+									</tr>
+									<tr>
+										<td><img src="../../images/dogs/underwater-11.jpg"/></td>
+										<td><img src="../../images/dogs/underwater-12.jpg"/></td>
+									</tr>
+								</table>
+								<table>
+									<tr>
+										<td><img src="../../images/dogs/underwater-13.jpg"/></td>
+										<td><img src="../../images/dogs/underwater-14.jpg"/></td>
+									</tr>
+									<tr>
+										<td><img src="../../images/dogs/underwater-15.jpg"/></td>
+										<td></td>
+									</tr>
+								</table>
+							</div>
+						</div>
+						<div class="control vertical">
+							<div class="flexstrip vertical" id="flexstrip3a" data-mode="page" data-vertical="true">
+								<table>
+									<tr>
+										<td><img src="../../images/dogs/underwater-01.jpg"/></td>
+										<td><img src="../../images/dogs/underwater-02.jpg"/></td>
+									</tr>
+									<tr>
+										<td><img src="../../images/dogs/underwater-03.jpg"/></td>
+										<td><img src="../../images/dogs/underwater-04.jpg"/></td>
+									</tr>
+								</table>
+								<table>
+									<tr>
+										<td><img src="../../images/dogs/underwater-05.jpg"/></td>
+										<td><img src="../../images/dogs/underwater-06.jpg"/></td>
+									</tr>
+									<tr>
+										<td><img src="../../images/dogs/underwater-07.jpg"/></td>
+										<td><img src="../../images/dogs/underwater-08.jpg"/></td>
+									</tr>
+								</table>
+								<table>
+									<tr>
+										<td><img src="../../images/dogs/underwater-09.jpg"/></td>
+										<td><img src="../../images/dogs/underwater-10.jpg"/></td>
+									</tr>
+									<tr>
+										<td><img src="../../images/dogs/underwater-11.jpg"/></td>
+										<td><img src="../../images/dogs/underwater-12.jpg"/></td>
+									</tr>
+								</table>
+								<table>
+									<tr>
+										<td><img src="../../images/dogs/underwater-13.jpg"/></td>
+										<td><img src="../../images/dogs/underwater-14.jpg"/></td>
+									</tr>
+									<tr>
+										<td><img src="../../images/dogs/underwater-15.jpg"/></td>
+										<td></td>
+									</tr>
+								</table>
+							</div>
+						</div>
+						<div class="settings">
+							<ul>
+								<li>
+									<input name="mouseDraggable" type="checkbox" id="c2s1"/>
+									<label for="c2s1">mouseDraggable</label>
+								</li>
+								<li>
+									<input name="mouseScrollable" type="checkbox" id="c2s9"/>
+									<label for="c2s9">mouseScrollable</label>
+								</li>
+								<li>
+									<input name="dropOnMouseOut" type="checkbox" id="c2s2"/>
+									<label for="c2s2">dropOnMouseOut</label>
+								</li>
+								<li>
+									<input name="snapToItems" type="checkbox" id="c2s4"/>
+									<label for="c2s4">snapToItems</label>
+								</li>
+								<li>
+									<input name="forceSnapPoints" type="checkbox" id="c2s5"/>
+									<label for="c2s5">forceSnapPoints</label>
+								</li>
+								<li>
+									<input name="scrollOnClick" type="checkbox" id="c2s6"/>
+									<label for="c2s6">scrollOnClick</label>
+								</li>
+								<li>
+									<input name="arrowsOnHover" type="checkbox" id="c2s7"/>
+									<label for="c2s7">arrowsOnHover</label>
+								</li>
+								<li>
+									<input name="globalKeyReact" type="checkbox" id="c2s8"/>
+									<label for="c2s8">globalKeyReact</label>
+								</li>
+							</ul>
+						</div>
+						<footer>
+							<div class="controls">
+								<a href="javascript:prevPage()">prev page</a>
+								<a href="javascript:nextPage()">next page</a>
+							</div>
+						</footer>
+					</div>
+					<div class="example header">
+						Handling the remaining empty space.
+					</div>
+					<div class="example split">
+						<div class="control horizontal">Horizontal</div>
+						<div class="control vertical">Vertical</div>
+						<div class="settings">Settings</div>
+					</div>
+					<div class="example split tall">
+						<div class="control horizontal">
+							<div class="flexstrip" id="flexstrip4">
+								<img src="../../images/dogs/underwater-01.jpg"/>
+							</div>
+						</div>
+						<div class="control vertical">
+							<div class="flexstrip vertical" id="flexstrip4a" data-vertical="true">
+								<img src="../../images/dogs/underwater-01.jpg"/>
+							</div>
+						</div>
+						<div class="settings">
+							<ul>
+								<li>
+									<input name="center" type="checkbox" id="c4s1"/>
+									<label for="c4s1">center</label>
+								</li>
+								<li>
+									<input name="stretch" type="checkbox" id="c4s2"/>
+									<label for="c4s2">stretch</label>
+								</li>
+							</ul>
+						</div>
+					</div>
+					<div class="example header">
+						Distributing slides
+					</div>
+					<div class="example split">
+						<div class="control horizontal">Horizontal</div>
+						<div class="control vertical">Vertical</div>
+						<div class="settings">Settings</div>
+					</div>
+					<div class="example split tall">
+						<div class="control horizontal">
+							<div class="flexstrip" id="flexstrip5" data-distribute="contain">
+								<img src="../../images/dogs/underwater-01.jpg" width="80"/>
+								<img src="../../images/dogs/underwater-02.jpg" width="120"/>
+								<img src="../../images/dogs/underwater-03.jpg" width="60"/>
+							</div>
+						</div>
+						<div class="control vertical">
+							<div class="flexstrip vertical" id="flexstrip5a" data-vertical="true" data-distribute="contain">
+								<img src="../../images/dogs/underwater-01.jpg" height="30"/>
+								<img src="../../images/dogs/underwater-02.jpg" height="50"/>
+								<img src="../../images/dogs/underwater-03.jpg" height="85"/>
+							</div>
+						</div>
+						<div class="settings">
+							<ul>
+								<li>
+									<input name="distribute" value="contain" type="radio" id="c5s1"/>
+									<label for="c5s1">distribute: contain</label>
+								</li>
+								<li>
+									<input name="distribute" value="largest" type="radio" id="c5s2"/>
+									<label for="c5s2">distribute: largest</label>
+								</li>
+								<li>
+									<input name="distribute" value="smallest" type="radio" id="c5s3"/>
+									<label for="c5s3">distribute: smallest</label>
+								</li>
+							</ul>
+						</div>
+					</div>
+				</div>
+				<div id="qunit-testrunner-toolbar"></div>
+				<h2 id="qunit-userAgent"></h2>
+				<p id="qunit-testresult"></p>
+				<ol id="qunit-tests"></ol>
+				<script><!--
+
+					function prevSlide()
+					{
+						$('#flexstrip2').data("flexstrip").prev();
+						$('#flexstrip2a').data("flexstrip").prev();
+					}
+
+					function nextSlide()
+					{
+						$('#flexstrip2').data("flexstrip").next();
+						$('#flexstrip2a').data("flexstrip").next();
+					}
+
+					function prevPage()
+					{
+						$('#flexstrip3').data("flexstrip").prev();
+						$('#flexstrip3a').data("flexstrip").prev();
+					}
+
+					function nextPage()
+					{
+						$('#flexstrip3').data("flexstrip").next();
+						$('#flexstrip3a').data("flexstrip").next();
+					}
+
+					function onSettingCheckboxClicked(e)
+					{
+						var $elem = $(this);
+						var $example = $elem.closest(".example");
+						var flexstrip1 = $example.find(".flexstrip").data("flexstrip");
+						var flexstrip2 = $example.find(".flexstrip.vertical").data("flexstrip");
+						var name = $elem.attr("name");
+
+						var value = $elem.attr("type") == "checkbox" ? this.checked : this.value;
+
+						flexstrip1.set(name, value);
+
+						if (flexstrip2)
+							flexstrip2.set(name, value);
+
+						$elem.closest(".settings").find("input").each(initializeCheckbox);
+					}
+
+					function initializeCheckbox()
+					{
+						var $elem = $(this);
+						var flexstrip = $elem.closest(".example").find(".flexstrip").data("flexstrip");
+						var name = $elem.attr("name");
+						var value = $elem.attr("value");
+
+						if (this.type == "radio")
+							this.checked = flexstrip.get(name) == value;
+						else
+							this.checked = flexstrip.get(name) == true;
+					}
+
+					$(function ()
+					{
+						one.controls.flexstrip.create(".flexstrip");
+						$(".settings input").click(onSettingCheckboxClicked).each(initializeCheckbox);
+						test("flexstrip initialization and api", function ()
+						{
+							ok(1);
+						});
+					});
+
+				--></script>
+			</div>
+		</div>
+	</body>
+</html>

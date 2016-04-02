@@ -1,0 +1,70 @@
+/**
+ * Tooltip
+ */
+.onetooltippopup
+{
+	@arrowWidth: 6px;
+	@backgroundColor: #6991bc;
+	@color: #fff;
+
+	position: fixed; display: none; z-index: 987654;
+	cursor: default; font-size: .8em; color: white;
+
+	.bg
+		{ position: absolute; top: 0; left: 0; right: 0; bottom: 0; border-radius: 3px; background-color: @backgroundColor; }
+	.content
+		{ position: relative; z-index: 1; padding: 5px; float: left; overlow: hidden; min-width: 30px; max-width: 400px; }
+	.arrow
+		{ position: absolute; z-index: 2; height: @arrowWidth * 2; width: @arrowWidth * 2; }
+	canvas
+		{ visibility: hidden; position: absolute; top: 0; left: 0; }
+
+	&.t
+	{
+		padding-bottom: @arrowWidth;
+		.bg { bottom: @arrowWidth; }
+		.arrow { bottom: 0; width: @arrowWidth * 2; height: @arrowWidth; }
+		canvas.b { visibility: visible; }
+
+		&.-l .bg
+			{ border-bottom-left-radius: 0; }
+		&.-r .bg
+			{ border-bottom-right-radius: 0; }
+	}
+	&.b
+	{
+		padding-top: @arrowWidth;
+		.bg { top: @arrowWidth; }
+		.arrow { top: 0; width: @arrowWidth * 2; height: @arrowWidth; }
+		canvas.t { visibility: visible; }
+
+		&.-l .bg
+			{ border-top-left-radius: 0; }
+		&.-r .bg
+			{ border-top-right-radius: 0; }
+	}
+	&.l
+	{
+		padding-right: @arrowWidth;
+		.bg { right: @arrowWidth; }
+		.arrow { right: 0; width: @arrowWidth; height: @arrowWidth * 2; }
+		canvas.r { visibility: visible; }
+
+		&.-t .bg
+			{ border-top-right-radius: 0; }
+		&.-b .bg
+			{ border-bottom-right-radius: 0; }
+	}
+	&.r
+	{
+		padding-left: @arrowWidth;
+		.bg { left: @arrowWidth; }
+		.arrow { width: @arrowWidth; height: @arrowWidth * 2; }
+		canvas.l { visibility: visible; }
+
+		&.-t .bg
+			{ border-top-left-radius: 0; }
+		&.-b .bg
+			{ border-bottom-left-radius: 0; }
+	}
+}

@@ -1,0 +1,69 @@
+.scrollable
+{
+	overflow: hidden; position: relative;
+
+	.one-scrolltrack
+	{
+		position: absolute; border: solid #ccc;
+	  border: 0; opacity: 0.01;
+	  -webkit-transition: opacity .2s, width 0.2s, height 0.2s;
+	  -moz-transition: opacity .2s, width 0.2s, height 0.2s;
+	  -ms-transition: opacity .2s, width 0.2s, height 0.2s;
+	  -o-transition: opacity .2s, width 0.2s, height 0.2s;
+		-webkit-border-radius: 5px; -moz-border-radius: 5px; border-radius: 5px;
+
+		.one-scrollgrip
+		{
+			position: absolute;
+			background-color: #000; -webkit-border-radius: 5px; -moz-border-radius: 5px; border-radius: 5px;
+		  -moz-background-clip: padding; -webkit-background-clip: padding-box; background-clip: padding-box;
+		}
+
+		&.vertical
+		{
+			left: auto; top: 2px; bottom: 2px; right: 2px; width: 8px; height: auto;
+			.one-scrollgrip
+				{ left: 0; top: 0; right: 0; bottom: auto; width: auto; height: 14px; }
+		}
+		&.horizontal
+		{
+			top: auto; left: 2px; bottom: 2px; right: 2px; height: 8px; width: auto;
+			.one-scrollgrip
+				{ left: 0; top: 0; right: auto; bottom: 0; width: 14px; height: auto; }
+		}
+	}
+
+	&.one-vscrollable
+	{
+		&.hot > .one-scrolltrack.vertical,
+		&.engaged > .one-scrolltrack.vertical
+			{ opacity: .6; }
+
+		.one-scrolltrack.vertical:hover,
+		.one-scrolltrack.vertical.active
+		{
+			background: rgba(127, 127, 127, .8); width: 12px;
+			opacity: 1;
+		}
+	}
+
+	&.one-hscrollable
+	{
+		&.hot > .one-scrolltrack.horizontal,
+		&.engaged > .one-scrolltrack.horizontal
+			{ opacity: .6; }
+
+		.one-scrolltrack.horizontal:hover,
+		.one-scrolltrack.horizontal.active
+		{
+			background: rgba(127, 127, 127, .8); height: 12px;
+			opacity: 1;
+		}
+	}
+
+	.one-scroller
+	{
+		position: absolute; left: 0; top: 0; overflow: scroll;
+		z-index: 0; bottom: -18px; right: -18px;
+	}
+}

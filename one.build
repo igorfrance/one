@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+<project name="Sage" xmlns="http://nant.sf.net/release/0.92/nant.xsd">
+
+	<property name="outputPath" value=".\release" overwrite="false"/>
+	<property name="karma" value="karma.cmd" overwrite="false"/>
+
+	<target name="default">
+		<echo>One.</echo>
+		<echo>==========================</echo>
+		<echo>one.js</echo>
+		<exec program=".\lib\Kelp.exe">
+			<arg value="-source:.\src\one.js"/>
+			<arg value="-target:${outputPath}\one.js"/>
+		</exec>
+		<echo>one.min.js</echo>
+		<exec program=".\lib\Kelp.exe">
+			<arg value="-source:.\src\one.js"/>
+			<arg value="-target:${outputPath}\one.min.js"/>
+			<arg value="-settings:MinifyCode=true!PreserveImportantComments=true"/>
+		</exec>
+		<echo></echo>
+		<echo>One Controls.</echo>
+		<echo>==========================</echo>
+		<echo>one.controls.js</echo>
+		<exec program=".\lib\Kelp.exe">
+			<arg value="-source:.\src\one.controls.js"/>
+			<arg value="-target:${outputPath}\one.controls.js"/>
+			<arg value="-log:warn"/>
+		</exec>
+		<echo>one.controls.min.js</echo>
+		<exec program=".\lib\Kelp.exe">
+			<arg value="-source:.\src\one.controls.js"/>
+			<arg value="-target:${outputPath}\one.controls.min.js"/>
+			<arg value="-settings:MinifyCode=true!PreserveImportantComments=true"/>
+			<arg value="-log:warn"/>
+		</exec>
+		<echo>one.controls.css</echo>
+		<exec program=".\lib\Kelp.exe">
+			<arg value="-source:.\src\one.controls.css"/>
+			<arg value="-target:${outputPath}\one.controls.css"/>
+			<arg value="-log:warn"/>
+		</exec>
+		<echo>one.controls.min.css</echo>
+		<exec program=".\lib\Kelp.exe">
+			<arg value="-source:.\src\one.controls.css"/>
+			<arg value="-target:${outputPath}\one.controls.min.css"/>
+			<arg value="-settings:MinifyExpressions=true!CommentMode=Important"/>
+			<arg value="-log:warn"/>
+		</exec>
+		<echo>Done.</echo>
+	</target>
+
+	<target name="test">
+		<echo>Running unit tests...</echo>
+		<exec program="${karma}">
+			<arg value="start"/>
+			<arg value="karma.conf.js"/>
+			<arg value="--reporters teamcity"/>
+			<arg value="--single-run"/>
+		</exec>
+	</target>
+
+</project>

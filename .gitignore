@@ -1,0 +1,15 @@
+aspnet_client/
+bin/
+obj/
+tmp/
+log/
+*.user
+*.suo
+*.resharper
+*.Resharper
+_target
+/node_modules
+/.idea
+*.iml
+/*.iws
+/*.ipr

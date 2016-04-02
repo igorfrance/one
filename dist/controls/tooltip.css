@@ -1,0 +1,120 @@
+/**
+ * Tooltip
+ */
+.onetooltippopup {
+  position: fixed;
+  display: none;
+  z-index: 987654;
+  cursor: default;
+  font-size: .8em;
+  color: white;
+}
+.onetooltippopup .bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 3px;
+  background-color: #6991bc;
+}
+.onetooltippopup .content {
+  position: relative;
+  z-index: 1;
+  padding: 5px;
+  float: left;
+  overlow: hidden;
+  min-width: 30px;
+  max-width: 400px;
+}
+.onetooltippopup .arrow {
+  position: absolute;
+  z-index: 2;
+  height: 12px;
+  width: 12px;
+}
+.onetooltippopup canvas {
+  visibility: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+.onetooltippopup.t {
+  padding-bottom: 6px;
+}
+.onetooltippopup.t .bg {
+  bottom: 6px;
+}
+.onetooltippopup.t .arrow {
+  bottom: 0;
+  width: 12px;
+  height: 6px;
+}
+.onetooltippopup.t canvas.b {
+  visibility: visible;
+}
+.onetooltippopup.t.-l .bg {
+  border-bottom-left-radius: 0;
+}
+.onetooltippopup.t.-r .bg {
+  border-bottom-right-radius: 0;
+}
+.onetooltippopup.b {
+  padding-top: 6px;
+}
+.onetooltippopup.b .bg {
+  top: 6px;
+}
+.onetooltippopup.b .arrow {
+  top: 0;
+  width: 12px;
+  height: 6px;
+}
+.onetooltippopup.b canvas.t {
+  visibility: visible;
+}
+.onetooltippopup.b.-l .bg {
+  border-top-left-radius: 0;
+}
+.onetooltippopup.b.-r .bg {
+  border-top-right-radius: 0;
+}
+.onetooltippopup.l {
+  padding-right: 6px;
+}
+.onetooltippopup.l .bg {
+  right: 6px;
+}
+.onetooltippopup.l .arrow {
+  right: 0;
+  width: 6px;
+  height: 12px;
+}
+.onetooltippopup.l canvas.r {
+  visibility: visible;
+}
+.onetooltippopup.l.-t .bg {
+  border-top-right-radius: 0;
+}
+.onetooltippopup.l.-b .bg {
+  border-bottom-right-radius: 0;
+}
+.onetooltippopup.r {
+  padding-left: 6px;
+}
+.onetooltippopup.r .bg {
+  left: 6px;
+}
+.onetooltippopup.r .arrow {
+  width: 6px;
+  height: 12px;
+}
+.onetooltippopup.r canvas.l {
+  visibility: visible;
+}
+.onetooltippopup.r.-t .bg {
+  border-top-left-radius: 0;
+}
+.onetooltippopup.r.-b .bg {
+  border-bottom-left-radius: 0;
+}
