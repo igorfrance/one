@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" ng-app="app1">
+	<head>
+		<title>FlexStrip</title>
+		<meta charset="utf-8"/>
+		<script type="text/javascript" src="../../lib/angular.js"></script>
+		<script type="text/javascript" src="../../lib/jquery-2.0.3.min.js"></script>
+		<script type="text/javascript" src="../../lib/jquery.velocity.min.js"></script>
+		<script type="text/javascript" src="../../lib/qunit-1.11.0.js"></script>
+		<script type="text/javascript" src="../../../dist/one.js"></script>
+		<script type="text/javascript" src="../../../src/controls/flexstrip/flexstrip.js"></script>
+		<link rel="stylesheet" href="../../css/test.css"/>
+		<link rel="stylesheet" href="../../lib/qunit-1.11.0.css"/>
+		<style>
+
+			.testing-area *
+			{
+				box-sizing: border-box;
+			}
+			.testing-area .example
+			{
+				overflow: hidden; margin-bottom: 5px;
+			}
+			.testing-area .example.header
+			{
+				background: #5f5f5f; color: #fff; margin: -10px -10px 20px -10px; height: auto; padding: 5px 10px;
+			}
+			.testing-area .example.tall .control
+			{
+				height: 200px; margin-bottom: 20px;
+			}
+			.testing-area .example.split .control.horizontal
+			{
+				float: left; width: 50%; overflow: hidden;
+				position: relative; margin-right: 1%;
+			}
+			.testing-area .example.split .control.vertical
+			{
+				float: left; width: 20%; overflow: hidden;
+				position: relative; margin-right: 1%;
+			}
+			.testing-area .example.split .settings
+			{
+				float: left; width: 28%; overflow: hidden;
+			}
+			.testing-area .example .code
+			{
+				padding-left: 10px;
+			}
+			.testing-area footer
+			{
+				clear: both; overflow: hidden; margin-bottom: 20px;
+			}
+			.testing-area footer .remarks
+			{
+				float: left;
+			}
+			.testing-area footer .controls
+			{
+				float: right;
+			}
+			.example .settings ul
+			{
+				padding: 0; margin: 0; list-style-type: none;
+				font-size: 12px; font-family: Courier, monospace;
+			}
+
+			.settings label
+			{
+				top: -3px; position: relative;
+			}
+
+			.flexstrip
+				{ background: #000; }
+			.flexstrip img
+				{ float: left; margin: 0 2px 0 0; }
+			.flexstrip img:last-child
+				{ margin: 0; }
+			.flexstrip.vertical img
+				{ float: left; margin: 0 0 2px 0; width: 100%; }
+			.flexstrip.vertical img:last-child
+				{ margin: 0; }
+			.flexstrip table
+				{ width: 100%; height: 100%; float: left; border-collapse: collapse; border-spacing: 0; }
+			.flexstrip table img
+				{ width: 100%; height: 50%; margin: 0; }
+
+			.flexstrip-arrow
+			{
+				position: absolute; width: 20px; height: 20px;
+				background-color: rgba(255, 255, 255, .7);
+				color: #000;
+				cursor: pointer; visibility: hidden; opacity: 0; z-index: 10;
+				transition: visibility .3s, opacity .3s;
+				user-select: none; text-align: center;
+			}
+
+			.flexstrip-arrow.visible
+				{ visibility: visible; opacity: 1; }
+			.flexstrip-arrow.prev
+				{ left: 0; top: 45%; }
+			.flexstrip-arrow.prev:before
+				{ content: "←"; }
+			.flexstrip-arrow.prev.vertical
+				{ left: 45%; top: 0; }
+			.flexstrip-arrow.prev.vertical:before
+				{ content: "↑"; }
+			.flexstrip-arrow.next
+				{ right: 0; top: 45%; }
+			.flexstrip-arrow.next:before
+				{ content: "→"; }
+			.flexstrip-arrow.next.vertical
+				{ left: 45%; bottom: 0; right: auto; top: auto; }
+			.flexstrip-arrow.next.vertical:before
+				{ content: "↓"; }
+
+			.one-scrolltrack
+			{
+				position: absolute; border: solid #ccc;
+			  border: 0; opacity: 0.01;
+			  -webkit-transition: opacity .2s, width 0.2s, height 0.2s;
+			  -moz-transition: opacity .2s, width 0.2s, height 0.2s;
+			  -ms-transition: opacity .2s, width 0.2s, height 0.2s;
+			  -o-transition: opacity .2s, width 0.2s, height 0.2s;
+				-webkit-border-radius: 5px; -moz-border-radius: 5px; border-radius: 5px;
+			}
+
+			.one-scrolltrack.vertical
+			{
+				left: auto; top: 2px; bottom: 2px; right: 2px; width: 8px; height: auto;
+			}
+
+			.one-scrolltrack.horizontal
+			{
+				top: auto; left: 2px; bottom: 2px; right: 2px; height: 8px; width: auto;
+			}
+
+			.one-scrollgrip
+			{
+				position: absolute;
+				background-color: #000; -webkit-border-radius: 5px; -moz-border-radius: 5px; border-radius: 5px;
+			  -moz-background-clip: padding; -webkit-background-clip: padding-box; background-clip: padding-box;
+			}
+
+			.one-scrolltrack.vertical .one-scrollgrip
+				{ left: 0; top: 0; right: 0; bottom: auto; width: auto; height: 14px; }
+			.one-scrolltrack.horizontal .one-scrollgrip
+				{ left: 0; top: 0; right: auto; bottom: 0; width: 14px; height: auto; }
+
+			/*.one-scrolltrack.one-vscrollable.hot > .one-scrolltrack.vertical,
+			.one-scrolltrack.one-vscrollable.engaged > .one-scrolltrack.vertical
+				{ opacity: .6; }
+			.one-scrolltrack.one-vscrollable .one-scrolltrack.vertical:hover,
+			.one-scrolltrack.one-vscrollable .one-scrolltrack.vertical.active
+			{
+				background: rgba(127, 127, 127, .8); width: 12px;
+				opacity: 1;
+			}
+
+			.one-scrolltrack.one-hscrollable.hot > .one-scrolltrack.horizontal,
+			.one-scrolltrack.one-hscrollable.engaged > .one-scrolltrack.horizontal
+				{ opacity: .6; }
+
+			.one-scrolltrack.one-hscrollable .one-scrolltrack.horizontal:hover,
+			.one-scrolltrack.one-hscrollable .one-scrolltrack.horizontal.active
+			{
+				background: rgba(127, 127, 127, .8); height: 12px;
+				opacity: 1;
+			}*/
+
+		</style>
+	</head>
+	<body>
+		<div id="wrapper">
+			<div id="container">
+				<div id="qunit-fixture"></div>
+				<h1 id="qunit-header">FlexStrip</h1>
+				<h2 id="qunit-banner"></h2>
+				<div class="documentation">
+					<p class="summary">
+						Tests the <a href="flexstrip.html">flexstip control</a> wrapped in angular.
+					</p>
+				</div>
+				<script>
+
+					var app1 = angular.module("app1", []);
+
+					app1.service("one", function () { return one; });
+
+					app1.directive("flexstrip", function (one)
+					{
+						var instances = [];
+
+						function FlexstripAdapter($scope, $element, $attrs, $transclude)
+						{
+							//this.control = new one.Flexstrip(element);
+							console.log("flexstrip controller");
+							console.log($element.html());
+
+							this.control = one.controls.flexstrip.create($element);
+
+							return this;
+//							{
+//								$onInit: function () {
+//									console.log("$onInit");
+//								}
+//							}
+						}
+
+						FlexstripAdapter.prototype.$onInit = function ()
+						{
+							console.log("prrototype $onInit");
+						};
+
+						FlexstripAdapter.prototype.link = function (element)
+						{
+						};
+
+						function FlexstripController()
+						{
+							debugger;
+						}
+
+						function createElement(className)
+						{
+							return $(one.string.format("<div class='{0}'/>", className));
+						}
+
+						return {
+							restrict: 'EAC',
+//							template: function ($element)
+//							{
+//								return one.string.format("<div>ALOHA t:{0} c:{1}</div>", $element.prop("tagName"), $element.prop("className"));
+//							},
+//							link: function (scope, element, attrs, x, tfx)
+//							{
+//								debugger;
+//								instances.push(new Flexstrip(scope, element, attrs));
+//							},
+							//transclude: true,
+							controller: FlexstripAdapter,
+							link: function ($scope, $element)
+							{
+								console.log("link flexstrip");
+							}
+						}
+					});
+
+					$(function ()
+					{
+						//one.controls.flexstrip.create(".flexstrip");
+						test("flexstrip-angular initialization and api", function ()
+						{
+							ok(1);
+						});
+					});
+
+				</script>
+				<div class="testing-area">
+					<div class="example header">
+						<flexstrip></flexstrip>
+						<!--<div class="flexstrip"></div>-->
+						<!--<div flexstrip="true"></div>-->
+					</div>
+					<div class="example split">
+						<div class="control horizontal">Horizontal</div>
+						<div class="control vertical">Vertical</div>
+						<div class="settings">Settings</div>
+					</div>
+					<div class="example split tall">
+						<div class="control horizontal">
+							<div class="flexstrip p" id="flexstrip1" data-useScrollBar="true">
+								<img src="../../images/dogs/underwater-01.jpg"/>
+								<img src="../../images/dogs/underwater-02.jpg"/>
+								<img src="../../images/dogs/underwater-03.jpg"/>
+								<img src="../../images/dogs/underwater-04.jpg"/>
+								<img src="../../images/dogs/underwater-05.jpg"/>
+								<img src="../../images/dogs/underwater-06.jpg"/>
+								<img src="../../images/dogs/underwater-07.jpg"/>
+								<img src="../../images/dogs/underwater-08.jpg"/>
+								<img src="../../images/dogs/underwater-09.jpg"/>
+								<img src="../../images/dogs/underwater-10.jpg"/>
+								<img src="../../images/dogs/underwater-11.jpg"/>
+								<img src="../../images/dogs/underwater-12.jpg"/>
+								<img src="../../images/dogs/underwater-13.jpg"/>
+								<img src="../../images/dogs/underwater-14.jpg"/>
+								<img src="../../images/dogs/underwater-15.jpg"/>
+							</div>
+						</div>
+						<!--<div class="control vertical">
+							<div class="flexstrip vertical" id="flexstrip1a" data-vertical="true">
+								<img src="../../images/dogs/underwater-01.jpg"/>
+								<img src="../../images/dogs/underwater-02.jpg"/>
+								<img src="../../images/dogs/underwater-03.jpg"/>
+								<img src="../../images/dogs/underwater-04.jpg"/>
+								<img src="../../images/dogs/underwater-05.jpg"/>
+								<img src="../../images/dogs/underwater-06.jpg"/>
+								<img src="../../images/dogs/underwater-07.jpg"/>
+								<img src="../../images/dogs/underwater-08.jpg"/>
+								<img src="../../images/dogs/underwater-09.jpg"/>
+								<img src="../../images/dogs/underwater-10.jpg"/>
+								<img src="../../images/dogs/underwater-11.jpg"/>
+								<img src="../../images/dogs/underwater-12.jpg"/>
+								<img src="../../images/dogs/underwater-13.jpg"/>
+								<img src="../../images/dogs/underwater-14.jpg"/>
+								<img src="../../images/dogs/underwater-15.jpg"/>
+							</div>
+						</div>
+						<div class="settings">
+							<ul>
+								<li>
+									<input name="mouseDraggable" type="checkbox" id="c1s1"/>
+									<label for="c1s1">mouseDraggable</label>
+								</li>
+								<li>
+									<input name="mouseScrollable" type="checkbox" id="c1s8"/>
+									<label for="c1s8">mouseScrollable</label>
+								</li>
+								<li>
+									<input name="dropOnMouseOut" type="checkbox" id="c1s2"/>
+									<label for="c1s2">dropOnMouseOut</label>
+								</li>
+								<li>
+									<input name="autoScroll" type="checkbox" id="c1s3"/>
+									<label for="c1s3">autoScroll</label>
+								</li>
+								<li>
+									<input name="snapToItems" type="checkbox" id="c1s4"/>
+									<label for="c1s4">snapToItems</label>
+								</li>
+								<li>
+									<input name="forceSnapPoints" type="checkbox" id="c1s5"/>
+									<label for="c1s5">forceSnapPoints</label>
+								</li>
+								<li>
+									<input name="scrollOnClick" type="checkbox" id="c1s6"/>
+									<label for="c1s6">scrollOnClick</label>
+								</li>
+								<li>
+									<input name="arrowsOnHover" type="checkbox" id="c1s7"/>
+									<label for="c1s7">arrowsOnHover</label>
+								</li>
+								<li>
+									<input name="globalKeyReact" type="checkbox" id="c1s9"/>
+									<label for="c1s9">globalKeyReact</label>
+								</li>
+								<li>
+									<input name="useScrollBar" type="checkbox" id="c1s10"/>
+									<label for="c1s10">useScrollBar</label>
+								</li>
+							</ul>
+						</div>-->
+					</div>
+				</div>
+				<div id="qunit-testrunner-toolbar"></div>
+				<h2 id="qunit-userAgent"></h2>
+				<p id="qunit-testresult"></p>
+				<ol id="qunit-tests"></ol>
+
+			</div>
+		</div>
+	</body>
+</html>
