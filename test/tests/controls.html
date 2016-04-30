@@ -1,0 +1,72 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head>
+		<title>one controls</title>
+		<script type="text/javascript" src="../lib/jquery-2.0.3.min.js"></script>
+		<script type="text/javascript" src="../lib/jquery.mockjax.js"></script>
+		<script type="text/javascript" src="../lib/qunit-1.11.0.js"></script>
+		<script type="text/javascript" src="../../dist/one.js"></script>
+		<link rel="stylesheet" href="../css/test.css"/>
+		<link rel="stylesheet" href="../lib/qunit-1.11.0.css"/>
+	</head>
+	<body>
+		<div id="wrapper">
+			<div id="container">
+				<div id="home_perspective">
+					<div id="qunit"></div>
+					<div id="qunit-fixture"></div>
+					<div class="testing-area">
+
+						<div class="box"></div>
+						<div class="box"></div>
+						<div class="box"></div>
+
+					</div>
+					<script>
+
+						$(function ()
+						{
+							module("one.controls");
+
+							test("one.controls", function runTest()
+							{
+								var foundBoxes = 0;
+
+								var box = (function ()
+								{
+									var Box = one.HtmlControl.extend(function ($element, settings)
+									{
+										this.construct($element);
+										foundBoxes++;
+									});
+
+									var BoxSettings = one.Settings.extend(function ($element, settings)
+									{
+										this.interval = this.getNumber("interval", $element, settings, 1);
+
+									});
+
+									var box = {};
+
+									box.Control = Box;
+									box.Settings = BoxSettings;
+
+									return box;
+
+								})();
+
+
+								var registry = new one.controls.Registry();
+								registry.register(".box", box);
+								registry.update($(document));
+
+								equal(foundBoxes, 3, "There should be three automatically found box elements");
+							});
+						});
+
+					</script>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>

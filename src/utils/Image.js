@@ -211,6 +211,29 @@ var $image = new function image()
 		}
 	};
 
+	var schedule =
+		window.requestAnimationFrame ||
+		window.webkitRequestAnimationFrame ||
+		window.mozRequestAnimationFrame ||
+		window.oRequestAnimationFrame ||
+		window.msRequestAnimationFrame ||
+			function schedule(callback, element) { window.setTimeout(callback, 1000 / 60); };
+
+	var proxy = function (fn, me)
+	{
+		return function proxy()
+		{
+			return fn.apply(me, arguments);
+		};
+	};
+
+	function isCanvasSupported()
+	{
+		var canvas = document.createElement("canvas");
+		return !(canvas == null || canvas.getContext == null || canvas.getContext("2d") == null);
+	}
+
+
 	function image(elem)
 	{
 		return new XImage(elem);
@@ -238,31 +261,20 @@ var $image = new function image()
 		easing: "easeOutExpo"
 	};
 
-	/*#include: Image.Transitions.js */
+	/* @include Image.Transitions.js */
 	image.Transitions	= Transitions;
 
-	var schedule =
-		window.requestAnimationFrame ||
-		window.webkitRequestAnimationFrame ||
-		window.mozRequestAnimationFrame ||
-		window.oRequestAnimationFrame ||
-		window.msRequestAnimationFrame ||
-			function schedule(callback, element) { window.setTimeout(callback, 1000 / 60); };
-
-	var proxy = function (fn, me)
+	image.load = function (src)
 	{
-		return function proxy()
+		var img = new Image;
+		return $.Deferred(function(defer)
 		{
-			return fn.apply(me, arguments);
-		};
+			img.onload = function () { defer.resolve(img); };
+			img.onerror = function () { defer.fail(img); };
+			img.src = src;
+
+		}).promise();
 	};
-
-	function isCanvasSupported()
-	{
-		var canvas = document.createElement("canvas");
-		return !(canvas == null || canvas.getContext == null || canvas.getContext("2d") == null);
-	}
-
 
 	return image;
 };

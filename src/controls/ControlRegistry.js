@@ -33,25 +33,47 @@ var ControlRegistry = function ControlRegistry()
 
 	/**
 	 * Registers a control.
-	 * @param {Object} control An object that describes the control.
+	 * @param {String} expression The css expression string for elements that should be
+	 * assigned the control.
+	 * @param {Object} options Optional contructor options to use when creating elements.
+	 * @param {Object} control The control factory object.
 	 */
-	this.register = function register(control)
+	this.register = function register(expression, control, options)
 	{
-		$log.assert($type.isObject(control), "Argument 'control' should either be an object that describes the control or the control itself");
+		var _expression, _control, _options;
+		if (arguments.length == 1)
+		{
+			_control = arguments[0] || {};
+			_options = {};
+			_expression = _control.expression;
+		}
+		if (arguments.length == 2)
+		{
+			_expression = arguments[0];
+			_control = arguments[1] || {};
+			_options = {};
+		}
+		if (arguments.length == 3)
+		{
+			_expression = arguments[0];
+			_control = arguments[1] || {};
+			_options = arguments[2] || {};
+		}
 
-		var typeInfo = new ControlTypeInfo(control);
+		expressions.push(_expression);
+
+		var typeInfo = new ControlTypeInfo(_control, _options, _expression);
 		types.push(typeInfo);
-		expressions.push(typeInfo.expression);
 
-		typeInfo.name = $type.isString(control.NAME)
-			? control.NAME
-			: $type.isFunction(control)
-				? one.func.getName(control)
-				: one.func.getName(control.constructor);
+		typeInfo.name = $type.isString(_control.NAME)
+			? _control.NAME
+			: $type.isFunction(_control)
+				? one.func.getName(_control)
+				: one.func.getName(_control.constructor);
 
 		$log.info("Registered control {0}", typeInfo.name);
 
-		return control;
+		return _control;
 	};
 
 	/**
@@ -142,8 +164,8 @@ var ControlRegistry = function ControlRegistry()
 	};
 
 	/**
-	 * Provides a method thcat can be called to signal that the outer initialization is
-	 * completed and that all controls can ow be started.
+	 * Provides a method that can be called to signal that the outer initialization is
+	 * completed and that all controls can now be started.
 	 */
 	this.start = function start()
 	{

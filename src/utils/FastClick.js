@@ -5,7 +5,7 @@
  * @constructor
  * @extends HtmlControl;
  */
-function FastClick(element, handler)
+var FastClick = HtmlControl.extend(function (element, handler)
 {
 	this.construct(element);
 
@@ -13,8 +13,7 @@ function FastClick(element, handler)
 
 	this.eventHandler = $.proxy(this.handleEvent, this);
 	this.$element.on("touchstart click", this.eventHandler);
-}
-FastClick.inherits(HtmlControl);
+});
 FastClick.coordinates = [];
 
 FastClick.preventGhostClick = function (x, y)

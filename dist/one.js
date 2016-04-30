@@ -1942,8 +1942,11 @@ var one = (function one($)
 	/**
 	 * Provides information about a registered control.
 	 * @param {Function} type The function that implements the control.
+	 * @param {Object} options Optional contructor options to use when creating elements.
+	 * @param {String} expression The css expression string for elements that should be
+	 * assigned the control.
 	 */
-	var ControlTypeInfo = function ControlTypeInfo(type)
+	var ControlTypeInfo = function ControlTypeInfo(type, options, expression)
 	{
 		//// Initialize the control
 		type.create = type.create || createInstance;
@@ -1953,6 +1956,7 @@ var one = (function one($)
 		type.dispose = type.dispose || Function.EMPTY;
 		type.start = type.start || Function.EMPTY;
 		type.instances = [];
+		type.options = $.extend({}, options);
 		type.registeredConstructors = {};
 		type.registerInstance = registerInstance;
 	
@@ -1960,7 +1964,7 @@ var one = (function one($)
 		info.type = type;
 		info.defaultConstructor = type.Control || type;
 		info.typeName = one.func.getName(type);
-		info.expression = type.expression;
+		info.expression = expression || type.expression;
 		info.async = type.async === true;
 		info.getInstance = getInstance;
 		info.createInstance = createInstance;
@@ -2062,11 +2066,12 @@ var one = (function one($)
 		 */
 		function createInstance(element, settings)
 		{
+			var _settings = $.extend({}, type.options, settings);
 			if (element == null)
 			{
 				if ($type.isFunction(this.createElement))
 				{
-					element = this.createElement(settings);
+					element = this.createElement(_settings);
 				}
 				else
 				{
@@ -2080,7 +2085,7 @@ var one = (function one($)
 			if (control == null)
 			{
 				var ctor = getConstructor(element);
-				control = new ctor(element, settings);
+				control = new ctor(element, _settings);
 				if ($type.isFunction(control.init))
 					control.init();
 	
@@ -2216,25 +2221,47 @@ var one = (function one($)
 	
 		/**
 		 * Registers a control.
-		 * @param {Object} control An object that describes the control.
+		 * @param {String} expression The css expression string for elements that should be
+		 * assigned the control.
+		 * @param {Object} options Optional contructor options to use when creating elements.
+		 * @param {Object} control The control factory object.
 		 */
-		this.register = function register(control)
+		this.register = function register(expression, control, options)
 		{
-			$log.assert($type.isObject(control), "Argument 'control' should either be an object that describes the control or the control itself");
+			var _expression, _control, _options;
+			if (arguments.length == 1)
+			{
+				_control = arguments[0] || {};
+				_options = {};
+				_expression = _control.expression;
+			}
+			if (arguments.length == 2)
+			{
+				_expression = arguments[0];
+				_control = arguments[1] || {};
+				_options = {};
+			}
+			if (arguments.length == 3)
+			{
+				_expression = arguments[0];
+				_control = arguments[1] || {};
+				_options = arguments[2] || {};
+			}
 	
-			var typeInfo = new ControlTypeInfo(control);
+			expressions.push(_expression);
+	
+			var typeInfo = new ControlTypeInfo(_control, _options, _expression);
 			types.push(typeInfo);
-			expressions.push(typeInfo.expression);
 	
-			typeInfo.name = $type.isString(control.NAME)
-				? control.NAME
-				: $type.isFunction(control)
-					? one.func.getName(control)
-					: one.func.getName(control.constructor);
+			typeInfo.name = $type.isString(_control.NAME)
+				? _control.NAME
+				: $type.isFunction(_control)
+					? one.func.getName(_control)
+					: one.func.getName(_control.constructor);
 	
 			$log.info("Registered control {0}", typeInfo.name);
 	
-			return control;
+			return _control;
 		};
 	
 		/**
@@ -2325,8 +2352,8 @@ var one = (function one($)
 		};
 	
 		/**
-		 * Provides a method thcat can be called to signal that the outer initialization is
-		 * completed and that all controls can ow be started.
+		 * Provides a method that can be called to signal that the outer initialization is
+		 * completed and that all controls can now be started.
 		 */
 		this.start = function start()
 		{
@@ -5337,6 +5364,125 @@ var one = (function one($)
 	};
 	
 	/**
+	 * Click handler
+	 * @param element
+	 * @param handler
+	 * @constructor
+	 * @extends HtmlControl;
+	 */
+	var FastClick = HtmlControl.extend(function (element, handler)
+	{
+		this.construct(element);
+	
+		this.handler = handler;
+	
+		this.eventHandler = $.proxy(this.handleEvent, this);
+		this.$element.on("touchstart click", this.eventHandler);
+	});
+	FastClick.coordinates = [];
+	
+	FastClick.preventGhostClick = function (x, y)
+	{
+	  FastClick.coordinates.push(x, y);
+	  window.setTimeout(FastClick.pop, 2500);
+	};
+	
+	FastClick.pop = function()
+	{
+	  FastClick.coordinates.splice(0, 2);
+	};
+	
+	FastClick.onDocumentClick = function (e)
+	{
+		for (var i = 0; i < FastClick.coordinates.length; i += 2)
+		{
+	    var x = FastClick.coordinates[i];
+	    var y = FastClick.coordinates[i + 1];
+	    if (Math.abs(e.clientX - x) < 25 && Math.abs(e.clientY - y) < 25)
+	    {
+	      e.stopPropagation();
+	      e.preventDefault();
+	    }
+	  }
+	};
+	
+	/**
+	 * Routes events to appropriate handlers
+	 * @param {Event} event
+	 */
+	FastClick.prototype.handleEvent = function (event)
+	{
+		switch (event.type)
+		{
+			case 'touchstart': this.onTouchStart(event); break;
+			case 'touchmove': this.onTouchMove(event); break;
+			case 'touchend': this.onClick(event); break;
+			case 'click': this.onClick(event); break;
+	  }
+	};
+	
+	FastClick.prototype.reset = function()
+	{
+		this.$element.off("touchend", this.eventHandler);
+		$(document).off("touchmove", this.eventHandler);
+	};
+	
+	FastClick.prototype.onTouchStart = function(e)
+	{
+		var event = e.originalEvent || e;
+		event.stopPropagation();
+	
+		this.$element.on("touchend", this.eventHandler);
+		$(document).on("touchmove", this.eventHandler);
+	
+		this.startX = event.touches[0].clientX;
+		this.startY = event.touches[0].clientY;
+	};
+	
+	FastClick.prototype.onTouchMove = function(e)
+	{
+		var event = e.originalEvent || e;
+		if (
+			Math.abs(event.touches[0].clientX - this.startX) > 10 ||
+			Math.abs(event.touches[0].clientY - this.startY) > 10)
+		{
+			this.reset();
+		}
+	};
+	
+	FastClick.prototype.onClick = function(e)
+	{
+	  e.stopPropagation();
+	
+	  this.reset();
+	  this.handler(e);
+	
+	  if (e.type == 'touchend')
+	    FastClick.preventGhostClick(this.startX, this.startY);
+	};
+	
+	document.addEventListener("click", FastClick.onDocumentClick, true);
+	
+	$.fastclick = function (selection, handler)
+	{
+		$(selection).fastclick(handler);
+	};
+	
+	$.fn.fastclick = function ()
+	{
+		var handler = arguments[0];
+	
+		this.each(function ()
+		{
+			var $elem = $(this);
+			if (!$elem.data("fastclick"))
+				$elem.data("fastclick", new FastClick($elem, handler));
+		});
+	
+		return this;
+	};
+	
+	/**
 	 * Provides an object that coordinates dragging.
 	 */
 	var $drag = (function Dragger()
@@ -6023,6 +6169,524 @@ var one = (function one($)
 		jQuery.extend(jQuery.easing, extension);
 	};
 	
+	/**
+	 * @copyright 2012 Igor France
+	 * Licensed under the MIT License
+	 *
+	 * This file is a part of the one.js
+	 */
+	
+	/**
+	 * Provides various image manipulation and processing utilities.
+	 * @type Object
+	 */
+	var $image = new function image()
+	{
+		var XImage = HtmlControl.extend(function XImage(element)
+		{
+			this.construct(element, "start", "progress", "done");
+	
+			var canvasSupported = isCanvasSupported();
+			if (canvasSupported)
+			{
+				var tagName = this.$element.prop("tagName");
+				if (tagName == "CANVAS")
+				{
+					this.canvas = this.$element[0];
+				}
+				else
+				{
+					var canvas = this.$element.parent().find("canvas")[0];
+					if (canvas == null)
+					{
+						canvas = document.createElement("canvas");
+						canvas.width = this.$element.width();
+						canvas.height = this.$element.height();
+	
+						this.$element.parent().append(canvas);
+					}
+	
+					if (tagName == "IMG")
+					{
+						var img = new Image();
+						var me = this;
+						img.onload = function onload()
+						{
+							if (canvas.width == 0 || canvas.height == 0)
+							{
+								canvas.width = img.width;
+								canvas.height = img.height;
+							}
+	
+							var context = canvas.getContext("2d");
+							context.drawImage(img, 0, 0, canvas.width, canvas.height);
+						};
+	
+						img.src = this.$element.prop("src");
+					}
+	
+					this.canvas = canvas;
+					this.context = canvas.getContext("2d");
+					this.$element.hide();
+				}
+			}
+			else
+			{
+				this.$image2 = $("<img/>");
+				for (var i = 0; i < this.$element[0].attributes.length; i++)
+				{
+					var attr = this.$element[0].attributes[i];
+					this.$image2.attr(attr.name, attr.value);
+				}
+	
+				this.$image2.hide();
+				this.$image2.addClass("image2");
+				this.$element.parent().append(this.$image2);
+			}
+		});
+	
+		XImage.prototype.drawImage = function XImage$drawImage(image)
+		{
+			this.clear();
+			return this.context.drawImage(image, 0, 0,
+				this.canvas.width,
+				this.canvas.width * image.height / image.width);
+		};
+	
+		XImage.prototype.cloneCurrent = function XImage$cloneCurrent()
+		{
+			var result = document.createElement("canvas");
+			result.width = this.canvas.width;
+			result.height = this.canvas.height;
+			result.getContext("2d").drawImage(this.canvas, 0, 0, result.width, result.height);
+			return result;
+		};
+	
+		XImage.prototype.clear = function XImage$clear()
+		{
+			this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+		};
+	
+		XImage.prototype.transition = function XImage$transition(options)
+		{
+			var transition = this.__transition = $.extend(image.transitionDefaults, options);
+	
+			if (transition.start)
+				this.on("start", transition.start);
+			if (transition.progress)
+				this.on("progress", transition.progress);
+			if (transition.done)
+				this.on("done", transition.done);
+	
+			transition.start = $date.time();
+			transition.end = transition.start + transition.duration;
+	
+			if (this.canvas != null)
+				transitionUsingCanvas.call(this, options);
+			else
+				transitionUsingOpacity.call(this, options);
+		};
+	
+		function transitionUsingCanvas(options)
+		{
+			var me = this;
+			var transition = this.__transition;
+	
+			transition.effect = image.Transitions[transition.effect] || image.Transitions.horizontalOpen;
+			transition.easingFx = $easing[transition.easing] || $easing.easeOutQuad;
+			transition.from = this.cloneCurrent();
+	
+			function beginTransition()
+			{
+				if (transition.effect.init)
+					transition.effect.init(me, transition);
+	
+				me.fireEvent("start");
+				me.animating = true;
+				schedule(proxy(renderTransition, me));
+			}
+	
+			if (transition.to instanceof Image)
+				beginTransition();
+			else
+			{
+				var src = transition.to;
+				transition.to = new Image();
+				transition.to.onload = beginTransition;
+				transition.to.src = src;
+			}
+		}
+	
+		function transitionUsingOpacity(options)
+		{
+			var me = this;
+	
+			function beginTransition()
+			{
+				me.$image2.attr("src", options.to.src);
+				me.$image2.css({ opacity: 0, display: "block" });
+				me.$image2.animate({ opacity: 1 });
+				me.$element.animate({ opacity: 0 },
+				{
+					duration: options.duration,
+					easing: options.easing,
+					progress: function progress(promise, progress, remaining) /**/
+					{
+						me.fireEvent("progress", { progress: progress });
+					},
+					complete: function complete() /**/
+					{
+						var img2 = me.$image2;
+						var elem = me.$element;
+						me.$element.hide().addClass("image2");
+						me.$image2.removeClass("image2");
+						me.$element = img2;
+						me.$image2 = elem;
+						me.fireEvent("done");
+					}
+				});
+	
+				me.fireEvent("start");
+			}
+	
+			if (options.to instanceof Image)
+			{
+				beginTransition();
+			}
+			else
+			{
+				options.to = new Image();
+				options.to.onload = beginTransition;
+				options.to.src = src;
+			}
+		}
+	
+		function renderTransition()
+		{
+			var time = $date.time();
+			var transition = this.__transition;
+			var progress = transition.easingFx(time - transition.start, 0, 1, transition.duration);
+	
+			if (time >= transition.end)
+			{
+				this.clear();
+				this.fireEvent("done");
+				this.animating = false;
+				return this.drawImage(transition.to);
+			}
+			else
+			{
+				transition.effect.render(this, transition, progress);
+				this.fireEvent("progress", { progress: progress });
+				schedule(proxy(renderTransition, this));
+			}
+		};
+	
+		var schedule =
+			window.requestAnimationFrame ||
+			window.webkitRequestAnimationFrame ||
+			window.mozRequestAnimationFrame ||
+			window.oRequestAnimationFrame ||
+			window.msRequestAnimationFrame ||
+				function schedule(callback, element) { window.setTimeout(callback, 1000 / 60); };
+	
+		var proxy = function (fn, me)
+		{
+			return function proxy()
+			{
+				return fn.apply(me, arguments);
+			};
+		};
+	
+		function isCanvasSupported()
+		{
+			var canvas = document.createElement("canvas");
+			return !(canvas == null || canvas.getContext == null || canvas.getContext("2d") == null);
+		}
+	
+	
+		function image(elem)
+		{
+			return new XImage(elem);
+		}
+	
+		image.getData = function XImage$getData(source)
+		{
+			var temp = document.createElement("canvas");
+			temp.width = source.width;
+			temp.height = source.height;
+	
+			var context = temp.getContext("2d");
+			context.drawImage(source, 0, 0, temp.width, temp.height);
+	
+			var result = context.getImageData(0, 0, temp.width, temp.height);
+			temp = null;
+			context = null;
+			return result;
+		};
+	
+		image.transitionDefaults =
+		{
+			duration: 1000,
+			transition: "horizontalOpen",
+			easing: "easeOutExpo"
+		};
+	
+		var Transitions = new function Transitions()
+		{
+			var Transition = Prototype.extend(function Transition(object)
+			{
+				if (object && $type.isFunction(object.init))
+					this.init = object.init;
+		
+				if (object && $type.isFunction(object.render))
+					this.render = object.render;
+			});
+		
+			Transition.prototype.init = function Transition$render(image, transition)
+			{
+				this.options = $.extend({}, transition.options);
+			};
+		
+			Transition.prototype.render = function Transition$render(image, transition, progress)
+			{
+			};
+		
+			var ClippedTransition = Prototype.extend(function Transition(clipFunction)
+			{
+				this.clipFunction = clipFunction;
+			});
+		
+			ClippedTransition.prototype.render = function ClippedTransition$render(image, transition, progress)
+			{
+				var canvas = image.canvas;
+				var context = image.canvas.getContext("2d");
+				image.drawImage(transition.from);
+		
+				context.save();
+				context.beginPath();
+				this.clipFunction(context, canvas.width, canvas.height, progress);
+				context.clip();
+				image.drawImage(transition.to);
+				context.restore();
+			};
+		
+			this.clock = new ClippedTransition(function render(ctx, w, h, p)
+			{
+				ctx.moveTo(w / 2, h / 2);
+				return ctx.arc(w / 2, h / 2, Math.max(w, h), 0, Math.PI * 2 * p, false);
+			});
+		
+			this.circle = new ClippedTransition(function render(ctx, w, h, p)
+			{
+				return ctx.arc(w / 2, h / 2, 0.6 * p * Math.max(w, h), 0, Math.PI * 2, false);
+			});
+		
+			this.diamond = new ClippedTransition(function render(ctx, w, h, p)
+			{
+				var dh, dw, h2, w2;
+				w2 = w / 2;
+				h2 = h / 2;
+				dh = p * h;
+				dw = p * w;
+				ctx.moveTo(w2, h2 - dh);
+				ctx.lineTo(w2 + dw, h2);
+				ctx.lineTo(w2, h2 + dh);
+				return ctx.lineTo(w2 - dw, h2);
+			});
+		
+			this.verticalOpen = new ClippedTransition(function render(ctx, w, h, p)
+			{
+				var h1, h2, hi, nbSpike, pw, spikeh, spikel, spiker, spikew, xl, xr, _results;
+				nbSpike = 8;
+				spikeh = h / (2 * nbSpike);
+				spikew = spikeh;
+				pw = p * w / 2;
+				xl = w / 2 - pw;
+				xr = w / 2 + pw;
+				spikel = xl - spikew;
+				spiker = xr + spikew;
+				ctx.moveTo(xl, 0);
+				for (hi = 0; 0 <= nbSpike ? hi <= nbSpike : hi >= nbSpike; 0 <= nbSpike ? hi++ : hi--)
+				{
+					h1 = (2 * hi) * spikeh;
+					h2 = h1 + spikeh;
+					ctx.lineTo(spikel, h1);
+					ctx.lineTo(xl, h2);
+				}
+				ctx.lineTo(spiker, h);
+				_results = [];
+				for (hi = nbSpike; nbSpike <= 0 ? hi <= 0 : hi >= 0; nbSpike <= 0 ? hi++ : hi--)
+				{
+					h1 = (2 * hi) * spikeh;
+					h2 = h1 - spikeh;
+					ctx.lineTo(xr, h1);
+					_results.push(ctx.lineTo(spiker, h2));
+				}
+				return _results;
+			});
+		
+			this.horizontalOpen = new ClippedTransition(function render(ctx, w, h, p)
+			{
+				return context.rect(0, (1 - progress) * height / 2, width, height * progress);
+			});
+		
+			this.horizontalSunblind = new ClippedTransition(function render(ctx, w, h, p)
+			{
+				var blind, blindHeight, blinds, _results;
+				p = 1 - (1 - p) * (1 - p);
+				blinds = 6;
+				blindHeight = h / blinds;
+				_results = [];
+				for (blind = 0; 0 <= blinds ? blind <= blinds : blind >= blinds; 0 <= blinds ? blind++ : blind--)
+				{
+					_results.push(ctx.rect(0, blindHeight * blind, w, blindHeight * p));
+				}
+				return _results;
+			});
+		
+			this.verticalSunblind = new ClippedTransition(function render(ctx, w, h, p)
+			{
+				var blind, blindWidth, blinds, prog, _results;
+				p = 1 - (1 - p) * (1 - p);
+				blinds = 10;
+				blindWidth = w / blinds;
+				_results = [];
+				for (blind = 0; 0 <= blinds ? blind <= blinds : blind >= blinds; 0 <= blinds ? blind++ : blind--)
+				{
+					prog = Math.max(0, Math.min(2 * p - (blind + 1) / blinds, 1));
+					_results.push(ctx.rect(blindWidth * blind, 0, blindWidth * prog, h));
+				}
+				return _results;
+			});
+		
+			this.circles = new ClippedTransition(function render(ctx, w, h, p)
+			{
+				var circleH, circleW, circlesX, circlesY, cx, cy, maxRad, maxWH, r, x, y, _results;
+				circlesY = 6;
+				circlesX = Math.floor(circlesY * w / h);
+				circleW = w / circlesX;
+				circleH = h / circlesY;
+				maxWH = Math.max(w, h);
+				maxRad = 0.7 * Math.max(circleW, circleH);
+				_results = [];
+				for (x = 0; 0 <= circlesX ? x <= circlesX : x >= circlesX; 0 <= circlesX ? x++ : x--)
+				{
+					_results.push((function ()
+					{
+						var _results2;
+						_results2 = [];
+						for (y = 0; 0 <= circlesY ? y <= circlesY : y >= circlesY; 0 <= circlesY ? y++ : y--)
+						{
+							cx = (x + 0.5) * circleW;
+							cy = (y + 0.5) * circleH;
+							r = Math.max(0, Math.min(2 * p - cx / w, 1)) * maxRad;
+							ctx.moveTo(cx, cy);
+							_results2.push(ctx.arc(cx, cy, r, 0, Math.PI * 2, false));
+						}
+						return _results2;
+					})());
+				}
+				return _results;
+			});
+		
+			this.squares = new ClippedTransition(function render(ctx, w, h, p)
+			{
+				var blindHeight, blindWidth, blindsX, blindsY, prog, rh, rw, sx, sy, x, y, _results;
+				p = 1 - (1 - p) * (1 - p);
+				blindsY = 5;
+				blindsX = Math.floor(blindsY * w / h);
+				blindWidth = w / blindsX;
+				blindHeight = h / blindsY;
+				_results = [];
+				for (x = 0; 0 <= blindsX ? x <= blindsX : x >= blindsX; 0 <= blindsX ? x++ : x--)
+				{
+					_results.push((function ()
+					{
+						var _results2;
+						_results2 = [];
+						for (y = 0; 0 <= blindsY ? y <= blindsY : y >= blindsY; 0 <= blindsY ? y++ : y--)
+						{
+							sx = blindWidth * x;
+							sy = blindHeight * y;
+							prog = Math.max(0, Math.min(3 * p - sx / w - sy / h, 1));
+							rw = blindWidth * prog;
+							rh = blindHeight * prog;
+							_results2.push(ctx.rect(sx - rw / 2, sy - rh / 2, rw, rh));
+						}
+						return _results2;
+					})());
+				}
+				return _results;
+			});
+		
+			this.fadeLeft = new Transition(
+			{
+				init: function init(self, transition)
+				{
+					this.options = $.extend({ direction: "right" }, transition.options);
+		
+					transition.randomTrait = [];
+					transition.fromData = image.getData(transition.from);
+					transition.toData = image.getData(transition.to);
+					transition.output = self.context.createImageData(self.canvas.width, self.canvas.height);
+		
+					var h = self.canvas.height;
+					for (var i = 0; 0 <= h ? i <= h : i >= h; 0 <= h ? i++ : i--)
+						transition.randomTrait[i] = Math.random();
+				},
+		
+				render: function render(self, transition, progress, data)
+				{
+					var blur = 150;
+					var height = self.canvas.height;
+					var width = self.canvas.width;
+					var fd = transition.fromData.data;
+					var td = transition.toData.data;
+					var out = transition.output.data;
+		
+					var wpdb = width * progress / blur;
+					for (var x = 0; x < width; ++x)
+					{
+						var xdb = x / blur;
+						for (var y = 0; y < self.canvas.height; ++y)
+						{
+							var b = (y * width + x) * 4;
+							var p1 = Math.min(Math.max((xdb - wpdb * (1 + transition.randomTrait[y] / 10)), 0), 1);
+							var p2 = 1 - p1;
+							for (var c = 0; c < 3; ++c)
+							{
+								var i = b + c;
+								out[i] = p1 * (fd[i]) + p2 * (td[i])
+							}
+							out[b + 3] = 255;
+						}
+					}
+		
+					return self.context.putImageData(transition.output, 0, 0);
+				}
+			});
+		
+		};
+		
+		
+		image.Transitions	= Transitions;
+	
+		image.load = function (src)
+		{
+			var img = new Image;
+			return $.Deferred(function(defer)
+			{
+				img.onload = function () { defer.resolve(img); };
+				img.onerror = function () { defer.fail(img); };
+				img.src = src;
+	
+			}).promise();
+		};
+	
+		return image;
+	};
+	
 
 	one.Prototype = Prototype;
 	one.Property = Property;
@@ -6047,18 +6711,19 @@ var one = (function one($)
 	one.drag = $drag;
 	one.easing = $easing;
 	one.number = $number;
-	one.controls = {};
+	one.controls = new ControlRegistry;
+	one.controls.Registry = ControlRegistry;
+	one.controls.TypeInfo = ControlTypeInfo;
 
-	// one.controls = new ControlRegistry;
-	//
-	// one.init = new Initializer;
-	// one.init.register(one.controls, true);
-	// one.init.on("done", $.proxy(one.controls.start, one.controls));
-	//
-	// $(window)
-	// 	.on("load", one.init.setup)
-	// 	.on("unload", one.init.dispose);
-	//
+	one.init = new Initializer;
+	one.init.register(one.controls, true);
+	one.init.on("done", $.proxy(one.controls.start, one.controls));
+
+
+	$(window)
+		.on("load", one.init.setup)
+		.on("unload", one.init.dispose);
+
 	// if ($.fn.velocity)
 	// {
 	// 	$.fn.animate = function animate(props, arg2, arg3)

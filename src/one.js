@@ -34,8 +34,10 @@ var one = (function one($)
 	/* @include utils/Xml.js  */
 	/* @include utils/Constants.js  */
 	/* @include utils/Event.js  */
+	/* @include utils/FastClick.js  */
 	/* @include utils/Dragger.js  */
 	/* @include utils/Easing.js  */
+	/* @include utils/Image.js  */
 
 	one.Prototype = Prototype;
 	one.Property = Property;
@@ -60,18 +62,19 @@ var one = (function one($)
 	one.drag = $drag;
 	one.easing = $easing;
 	one.number = $number;
-	one.controls = {};
+	one.controls = new ControlRegistry;
+	one.controls.Registry = ControlRegistry;
+	one.controls.TypeInfo = ControlTypeInfo;
 
-	// one.controls = new ControlRegistry;
-	//
-	// one.init = new Initializer;
-	// one.init.register(one.controls, true);
-	// one.init.on("done", $.proxy(one.controls.start, one.controls));
-	//
-	// $(window)
-	// 	.on("load", one.init.setup)
-	// 	.on("unload", one.init.dispose);
-	//
+	one.init = new Initializer;
+	one.init.register(one.controls, true);
+	one.init.on("done", $.proxy(one.controls.start, one.controls));
+
+
+	$(window)
+		.on("load", one.init.setup)
+		.on("unload", one.init.dispose);
+
 	// if ($.fn.velocity)
 	// {
 	// 	$.fn.animate = function animate(props, arg2, arg3)

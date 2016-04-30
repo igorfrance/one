@@ -1590,7 +1590,7 @@ one.controls.flexstrip = (function FlexStripModule()
 		this.targetPos = position;
 		if (direct || currPos == this.targetPos)
 		{
-			this.$element(this.props.position, position);
+			this.$element[this.props.position] = position;
 			onAnimationComplete.call(this);
 		}
 		else

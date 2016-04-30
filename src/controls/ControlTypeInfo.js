@@ -1,8 +1,11 @@
 /**
  * Provides information about a registered control.
  * @param {Function} type The function that implements the control.
+ * @param {Object} options Optional contructor options to use when creating elements.
+ * @param {String} expression The css expression string for elements that should be
+ * assigned the control.
  */
-var ControlTypeInfo = function ControlTypeInfo(type)
+var ControlTypeInfo = function ControlTypeInfo(type, options, expression)
 {
 	//// Initialize the control
 	type.create = type.create || createInstance;
@@ -12,6 +15,7 @@ var ControlTypeInfo = function ControlTypeInfo(type)
 	type.dispose = type.dispose || Function.EMPTY;
 	type.start = type.start || Function.EMPTY;
 	type.instances = [];
+	type.options = $.extend({}, options);
 	type.registeredConstructors = {};
 	type.registerInstance = registerInstance;
 
@@ -19,7 +23,7 @@ var ControlTypeInfo = function ControlTypeInfo(type)
 	info.type = type;
 	info.defaultConstructor = type.Control || type;
 	info.typeName = one.func.getName(type);
-	info.expression = type.expression;
+	info.expression = expression || type.expression;
 	info.async = type.async === true;
 	info.getInstance = getInstance;
 	info.createInstance = createInstance;
@@ -121,11 +125,12 @@ var ControlTypeInfo = function ControlTypeInfo(type)
 	 */
 	function createInstance(element, settings)
 	{
+		var _settings = $.extend({}, type.options, settings);
 		if (element == null)
 		{
 			if ($type.isFunction(this.createElement))
 			{
-				element = this.createElement(settings);
+				element = this.createElement(_settings);
 			}
 			else
 			{
@@ -139,7 +144,7 @@ var ControlTypeInfo = function ControlTypeInfo(type)
 		if (control == null)
 		{
 			var ctor = getConstructor(element);
-			control = new ctor(element, settings);
+			control = new ctor(element, _settings);
 			if ($type.isFunction(control.init))
 				control.init();
 

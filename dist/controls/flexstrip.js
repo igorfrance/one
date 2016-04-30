@@ -771,13 +771,13 @@ one.controls.flexstrip = (function FlexStripModule()
 	}
 
 	function moveTo(position, options, direct)
-	{			this.$element[this.props.position] = position;
-
+	{
 		var currPos = parseInt(this.$element.css(this.props.position));
 
 		this.targetPos = position;
 		if (direct || currPos == this.targetPos)
 		{
+			this.$element[this.props.position] = position;
 			onAnimationComplete.call(this);
 		}
 		else
