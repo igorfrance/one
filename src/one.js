@@ -16,8 +16,9 @@ var one = (function one($)
 	/* @include core/Date.js  */
 	/* @include core/Function.js */
 	/* @include core/Prototype.js  */
-	/* @include core/Property.js  */
 	/* @include core/Dispatcher.js  */
+	/* @include core/Property.js  */
+	/* @include core/CookieProperty.js  */
 	/* @include core/Settings.js  */
 
 	/* @include controls/ControlTypeInfo.js  */
@@ -41,6 +42,7 @@ var one = (function one($)
 
 	one.Prototype = Prototype;
 	one.Property = Property;
+	one.CookieProperty = CookieProperty;
 	one.Dispatcher = Dispatcher;
 	one.Settings = Settings;
 	one.Initializer = Initializer;
@@ -62,6 +64,7 @@ var one = (function one($)
 	one.drag = $drag;
 	one.easing = $easing;
 	one.number = $number;
+	one.image = $image;
 	one.controls = new ControlRegistry;
 	one.controls.Registry = ControlRegistry;
 	one.controls.TypeInfo = ControlTypeInfo;
@@ -69,7 +72,6 @@ var one = (function one($)
 	one.init = new Initializer;
 	one.init.register(one.controls, true);
 	one.init.on("done", $.proxy(one.controls.start, one.controls));
-
 
 	$(window)
 		.on("load", one.init.setup)

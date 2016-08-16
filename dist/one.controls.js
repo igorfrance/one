@@ -991,7 +991,7 @@ one.controls.flexstrip = (function FlexStripModule()
 		this.$element.addClass("ready");
 		this.ready = true;
 
-		this.$element.data("flexstrip", this);
+		this.$element.data("one.flexstrip", this);
 	});
 
 	FlexStrip.prototype.dispose = function ()
@@ -2060,13 +2060,14 @@ one.controls.flexstrip = (function FlexStripModule()
 	{
 		if (context == null || context.length == 0)
 		{
-			return one.log.error("Specify the elements to initialize by using the expression argument");
+			one.log.error("Specify the elements to initialize by using the expression argument");
+			return null;
 		}
 
 		var instances = [];
 		$(context).each(function (i, element)
 		{
-			var control = $(element).data("flexstrip") || new FlexStrip(element, settings);
+			var control = $(element).data("one.flexstrip") || new FlexStrip(element, settings);
 			instances.push(control);
 		});
 
@@ -2076,10 +2077,12 @@ one.controls.flexstrip = (function FlexStripModule()
 	$.fn.flexstrip = function ()
 	{
 		var args = Array.prototype.slice.call(arguments);
+
+		var firstResult = undefined; 
 		this.each(function ()
 		{
 			var $elem = $(this);
-			var instance = $elem.data("flexstrip");
+			var instance = $elem.data("one.flexstrip");
 
 			if (!one.type.instanceOf(instance, FlexStrip))
 			{
@@ -2091,9 +2094,18 @@ one.controls.flexstrip = (function FlexStripModule()
 			var methodArgs = Array.prototype.slice.call(args, 1);
 			if (method && String(method).match(/^redraw|set|prev|next|select|slideIndex$/))
 			{
-				return instance[method].apply(instance, methodArgs);
+				var result = instance[method].apply(instance, methodArgs);
+				if (firstResult == undefined)
+					firstResult = result;
+
+				return result;
 			}
-		})
+
+			if (firstResult == undefined)
+				firstResult = instance;
+		});
+
+		return firstResult;
 	};
 
 	return flexstrip;

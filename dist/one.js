@@ -1306,6 +1306,11 @@ var one = (function one($)
 			return callStack;
 		};
 	
+		$function.delay = function (spec, routine)
+		{
+			spec.id = setTimeout(routine, spec.delay);
+		};
+		
 		return $function;
 	
 	})();
@@ -1418,93 +1423,6 @@ var one = (function one($)
 		}
 		else
 			this[name] = value;
-	};
-	
-	function Property(options)
-	{
-		this.get = Property.prototype.get;
-		this.set = Property.prototype.set;
-		this.default = undefined;
-		this.value = null;
-		this.restrictTo = null;
-	
-		$.extend(this, options);
-	
-		this.value = this.default;
-	}
-	
-	Property.prototype.get = function get()
-	{
-		return this.getValue.apply(this, arguments);
-	};
-	
-	Property.prototype.set = function set(value)
-	{
-		this.setValue(value);
-	};
-	
-	Property.prototype.getValue = function getValue()
-	{
-		return this.value;
-	};
-	
-	Property.prototype.setValue = function setValue(value)
-	{
-		var newValue;
-	
-		switch (this.type)
-		{
-			case Boolean:
-				newValue = String(value).match(/^true|1$/) != null;
-				break;
-	
-			case Number:
-				newValue = parseFloat(value) || 0;
-				break;
-	
-			default:
-				newValue = value == null ? value : String(value);
-				break;
-		}
-	
-		var valid = true;
-		if (this.restrictTo != null)
-		{
-			if ($type.isArray(this.restrictTo))
-			{
-				valid = [].concat(this.restrictTo).indexOf(newValue) != -1;
-			}
-			else
-			{
-				valid = false;
-				for (var name in this.restrictTo)
-				{
-					if (!this.restrictTo.hasOwnProperty(name))
-						continue;
-	
-					if (this.restrictTo[name] == newValue)
-					{
-						valid = true;
-						break;
-					}
-				}
-			}
-		}
-	
-		if (valid)
-		{
-			this.value = newValue;
-		}
-	};
-	
-	Property.prototype.valueOf = function valueOf()
-	{
-		return this.get();
-	};
-	
-	Property.prototype.toString = function toString()
-	{
-		return String(this.get());
 	};
 	
 	/**
@@ -1711,6 +1629,112 @@ var one = (function one($)
 	};
 	
 	
+	var Property = Dispatcher.extend(function Property(options)
+	{
+		this.get = Property.prototype.get;
+		this.set = Property.prototype.set;
+		this.default = null;
+		this.id = null;
+		this.type = String;
+		this.restrictTo = null;
+	
+		$.extend(this, options);
+	
+		this.value = this.value || this.default;
+	});
+	
+	Property.prototype.get = function ()
+	{
+		return this._get.apply(this, arguments);
+	};
+	
+	Property.prototype.set = function (value)
+	{
+		this._set(value);
+	};
+	
+	Property.prototype._get = function ()
+	{
+		return this.value;
+	};
+	
+	Property.prototype._set = function (value)
+	{
+		var newValue;
+	
+		switch (this.type)
+		{
+			case Boolean:
+				newValue = String(value).match(/^true|1$/) != null;
+				break;
+	
+			case Number:
+				newValue = parseFloat(value) || 0;
+				break;
+	
+			default:
+				newValue = value == null ? value : String(value);
+				break;
+		}
+	
+		var valid = true;
+		if (this.restrictTo != null)
+		{
+			if ($type.isArray(this.restrictTo))
+			{
+				valid = [].concat(this.restrictTo).indexOf(newValue) != -1;
+			}
+			else
+			{
+				valid = false;
+				for (var name in this.restrictTo)
+				{
+					if (!this.restrictTo.hasOwnProperty(name))
+						continue;
+	
+					if (this.restrictTo[name] == newValue)
+					{
+						valid = true;
+						break;
+					}
+				}
+			}
+		}
+	
+		if (valid)
+		{
+			this.value = newValue;
+		}
+	};
+	
+	Property.prototype.valueOf = function ()
+	{
+		return this.get();
+	};
+	
+	Property.prototype.toString = function ()
+	{
+		return String(this.get());
+	};
+	
+	var CookieProperty = Property.extend(function CookieProperty(options)
+	{
+		this.construct(options);
+	
+		this.id = this.id || this.name;
+		var cookie = one.cookie.get(this.id);
+		if (cookie != null)
+			this.value = cookie;
+	});
+	
+	CookieProperty.prototype._set = function (value)
+	{
+		one.cookie.set(this.id, value, null, null, this.path || null);
+		console.log("cookie: " + this.id + "=" + value);
+		return this.base("_set", value);
+	};
+	
+	
 	/**
 	 * Implements a class that helps with creating variable number of argument objects in a structured way.
 	 *
@@ -1753,7 +1777,7 @@ var one = (function one($)
 	 * <li>The <c>override</c> object, if it's an object
 	 * <ol><li>if it has a property with the specified name</li></ol></li>
 	 * <li>The default value, if any</li></ol>
-	 * @param {String} propName The name of the value to retrieve.
+	 * @param {String} name The name of the value to retrieve.
 	 * @param {Object} data The object or element with properties in which to look for property with <c>propName</c>.
 	 * @param {Object} [override] An object or element properties (or attributes) in which to look for property (or attribute)
 	 * with <c>propName</c>.
@@ -1763,10 +1787,11 @@ var one = (function one($)
 	 * @return {Object} A value as discovered in the supplied arguments <c>data</c> or <c>override</c>, or the
 	 * <c>defaultValue</c> if the value has not been discovered.
 	 */
-	Settings.prototype.getValue = function getValue(propName, data, override, defaultValue, restrictObject)
+	Settings.prototype.getValue = function getValue(name, data, override, defaultValue, restrictObject)
 	{
 		var dataObject = data && data.jquery ? data[0] : data;
 		var overrideObject = override && override.jquery ? override[0] : override;
+		var propName = name.toLowerCase();
 	
 		var result = defaultValue;
 		if ($type.isElement(overrideObject))
@@ -1953,8 +1978,8 @@ var one = (function one($)
 		type.createElement = type.createElement || createElement;
 		type.get = type.get || getInstance;
 		type.register = type.register || registerConstructor;
-		type.dispose = type.dispose || Function.EMPTY;
-		type.start = type.start || Function.EMPTY;
+		type.dispose = type.dispose || $function.EMPTY;
+		type.start = type.start || $function.EMPTY;
 		type.instances = [];
 		type.options = $.extend({}, options);
 		type.registeredConstructors = {};
@@ -2198,12 +2223,19 @@ var one = (function one($)
 	 * A registered control will be appended several methods that provide it with functionality to create get and create
 	 * instances, as well as to register custom constructors for specific elements.
 	 */
-	var ControlRegistry = function ControlRegistry()
+	var ControlRegistry = Dispatcher.extend(function ControlRegistry()
 	{
+		this.construct();
+	
+		this.registerEvent("ready");
+		this.registerEvent("update");
+	
+		this.started = false;
+	
 		var types = [];
 		var expressions = [];
 	
-		var depth = -1;
+		var depth = 0;
 	
 		/**
 		 * Calls static redraw method on all control types that implement it.
@@ -2248,7 +2280,8 @@ var one = (function one($)
 				_options = arguments[2] || {};
 			}
 	
-			expressions.push(_expression);
+			if (_expression)
+				expressions.push(_expression);
 	
 			var typeInfo = new ControlTypeInfo(_control, _options, _expression);
 			types.push(typeInfo);
@@ -2359,6 +2392,9 @@ var one = (function one($)
 		{
 			for (var i = 0; i < types.length; i++)
 				types[i].start();
+	
+			this.fireEvent("ready");
+			this.started = true;
 		};
 	
 		/**
@@ -2404,8 +2440,14 @@ var one = (function one($)
 			}
 	
 			depth--;
+	
+			if (depth == 0)
+			{
+				this.fireEvent("update");
+			}
 		};
-	};
+	
+	});
 	
 	/**
 	 * Provides a base class for HTML controls.
@@ -2785,7 +2827,7 @@ var one = (function one($)
 			hideSpecs.push(s);
 			if (!listeningToChange)
 			{
-				$(document).bind("mousedown touchstart keyup", onDocumentEvent);
+				$(document).bind("touchstart mousedown keyup", onDocumentEvent);
 				listeningToChange = true;
 			}
 		};
@@ -2946,6 +2988,9 @@ var one = (function one($)
 	
 		function onDocumentEvent(e)
 		{
+			// if (e.type == "touchstart" || e.type == "touchend")
+			// 	e.preventDefault();
+	
 			for (var i = 0; i < hideSpecs.length; i++)
 			{
 				var specs = hideSpecs[i];
@@ -6690,6 +6735,7 @@ var one = (function one($)
 
 	one.Prototype = Prototype;
 	one.Property = Property;
+	one.CookieProperty = CookieProperty;
 	one.Dispatcher = Dispatcher;
 	one.Settings = Settings;
 	one.Initializer = Initializer;
@@ -6711,6 +6757,7 @@ var one = (function one($)
 	one.drag = $drag;
 	one.easing = $easing;
 	one.number = $number;
+	one.image = $image;
 	one.controls = new ControlRegistry;
 	one.controls.Registry = ControlRegistry;
 	one.controls.TypeInfo = ControlTypeInfo;
@@ -6718,7 +6765,6 @@ var one = (function one($)
 	one.init = new Initializer;
 	one.init.register(one.controls, true);
 	one.init.on("done", $.proxy(one.controls.start, one.controls));
-
 
 	$(window)
 		.on("load", one.init.setup)
