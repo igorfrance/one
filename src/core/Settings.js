@@ -40,7 +40,7 @@ Prototype.extend(Settings);
  * <li>The <c>override</c> object, if it's an object
  * <ol><li>if it has a property with the specified name</li></ol></li>
  * <li>The default value, if any</li></ol>
- * @param {String} propName The name of the value to retrieve.
+ * @param {String} name The name of the value to retrieve.
  * @param {Object} data The object or element with properties in which to look for property with <c>propName</c>.
  * @param {Object} [override] An object or element properties (or attributes) in which to look for property (or attribute)
  * with <c>propName</c>.
@@ -50,10 +50,11 @@ Prototype.extend(Settings);
  * @return {Object} A value as discovered in the supplied arguments <c>data</c> or <c>override</c>, or the
  * <c>defaultValue</c> if the value has not been discovered.
  */
-Settings.prototype.getValue = function getValue(propName, data, override, defaultValue, restrictObject)
+Settings.prototype.getValue = function getValue(name, data, override, defaultValue, restrictObject)
 {
 	var dataObject = data && data.jquery ? data[0] : data;
 	var overrideObject = override && override.jquery ? override[0] : override;
+	var propName = name.toLowerCase();
 
 	var result = defaultValue;
 	if ($type.isElement(overrideObject))
