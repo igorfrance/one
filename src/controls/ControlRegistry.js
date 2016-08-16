@@ -10,12 +10,19 @@
  * A registered control will be appended several methods that provide it with functionality to create get and create
  * instances, as well as to register custom constructors for specific elements.
  */
-var ControlRegistry = function ControlRegistry()
+var ControlRegistry = Dispatcher.extend(function ControlRegistry()
 {
+	this.construct();
+
+	this.registerEvent("ready");
+	this.registerEvent("update");
+
+	this.started = false;
+
 	var types = [];
 	var expressions = [];
 
-	var depth = -1;
+	var depth = 0;
 
 	/**
 	 * Calls static redraw method on all control types that implement it.
@@ -60,7 +67,8 @@ var ControlRegistry = function ControlRegistry()
 			_options = arguments[2] || {};
 		}
 
-		expressions.push(_expression);
+		if (_expression)
+			expressions.push(_expression);
 
 		var typeInfo = new ControlTypeInfo(_control, _options, _expression);
 		types.push(typeInfo);
@@ -171,6 +179,9 @@ var ControlRegistry = function ControlRegistry()
 	{
 		for (var i = 0; i < types.length; i++)
 			types[i].start();
+
+		this.fireEvent("ready");
+		this.started = true;
 	};
 
 	/**
@@ -216,5 +227,11 @@ var ControlRegistry = function ControlRegistry()
 		}
 
 		depth--;
+
+		if (depth == 0)
+		{
+			this.fireEvent("update");
+		}
 	};
-};
+
+});
