@@ -147,6 +147,11 @@ var $function = (function ()
 		return callStack;
 	};
 
+	$function.delay = function (spec, routine)
+	{
+		spec.id = setTimeout(routine, spec.delay);
+	};
+	
 	return $function;
 
 })();
