@@ -1,32 +1,33 @@
-function Property(options)
+var Property = Dispatcher.extend(function Property(options)
 {
 	this.get = Property.prototype.get;
 	this.set = Property.prototype.set;
-	this.default = undefined;
-	this.value = null;
+	this.default = null;
+	this.id = null;
+	this.type = String;
 	this.restrictTo = null;
 
 	$.extend(this, options);
 
-	this.value = this.default;
-}
+	this.value = this.value || this.default;
+});
 
-Property.prototype.get = function get()
+Property.prototype.get = function ()
 {
-	return this.getValue.apply(this, arguments);
+	return this._get.apply(this, arguments);
 };
 
-Property.prototype.set = function set(value)
+Property.prototype.set = function (value)
 {
-	this.setValue(value);
+	this._set(value);
 };
 
-Property.prototype.getValue = function getValue()
+Property.prototype._get = function ()
 {
 	return this.value;
 };
 
-Property.prototype.setValue = function setValue(value)
+Property.prototype._set = function (value)
 {
 	var newValue;
 
@@ -75,12 +76,12 @@ Property.prototype.setValue = function setValue(value)
 	}
 };
 
-Property.prototype.valueOf = function valueOf()
+Property.prototype.valueOf = function ()
 {
 	return this.get();
 };
 
-Property.prototype.toString = function toString()
+Property.prototype.toString = function ()
 {
 	return String(this.get());
 };
