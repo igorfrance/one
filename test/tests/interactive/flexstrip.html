@@ -667,34 +667,34 @@
 
 					function prevSlide()
 					{
-						$('#flexstrip2').data("flexstrip").prev();
-						$('#flexstrip2a').data("flexstrip").prev();
+						$('#flexstrip2').data("one.flexstrip").prev();
+						$('#flexstrip2a').data("one.flexstrip").prev();
 					}
 
 					function nextSlide()
 					{
-						$('#flexstrip2').data("flexstrip").next();
-						$('#flexstrip2a').data("flexstrip").next();
+						$('#flexstrip2').data("one.flexstrip").next();
+						$('#flexstrip2a').data("one.flexstrip").next();
 					}
 
 					function prevPage()
 					{
-						$('#flexstrip3').data("flexstrip").prev();
-						$('#flexstrip3a').data("flexstrip").prev();
+						$('#flexstrip3').data("one.flexstrip").prev();
+						$('#flexstrip3a').data("one.flexstrip").prev();
 					}
 
 					function nextPage()
 					{
-						$('#flexstrip3').data("flexstrip").next();
-						$('#flexstrip3a').data("flexstrip").next();
+						$('#flexstrip3').data("one.flexstrip").next();
+						$('#flexstrip3a').data("one.flexstrip").next();
 					}
 
 					function onSettingCheckboxClicked(e)
 					{
 						var $elem = $(this);
 						var $example = $elem.closest(".example");
-						var flexstrip1 = $example.find(".flexstrip").data("flexstrip");
-						var flexstrip2 = $example.find(".flexstrip.vertical").data("flexstrip");
+						var flexstrip1 = $example.find(".flexstrip").data("one.flexstrip");
+						var flexstrip2 = $example.find(".flexstrip.vertical").data("one.flexstrip");
 						var name = $elem.attr("name");
 
 						var value = $elem.attr("type") == "checkbox" ? this.checked : this.value;
@@ -710,7 +710,7 @@
 					function initializeCheckbox()
 					{
 						var $elem = $(this);
-						var flexstrip = $elem.closest(".example").find(".flexstrip").data("flexstrip");
+						var flexstrip = $elem.closest(".example").find(".flexstrip").data("one.flexstrip");
 						var name = $elem.attr("name");
 						var value = $elem.attr("value");
 
