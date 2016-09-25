@@ -2827,7 +2827,7 @@ var one = (function one($)
 			hideSpecs.push(s);
 			if (!listeningToChange)
 			{
-				$(document).bind("touchstart mousedown keyup", onDocumentEvent);
+				$(document).bind("mousedown touchstart keyup", onDocumentEvent);
 				listeningToChange = true;
 			}
 		};
@@ -2988,9 +2988,6 @@ var one = (function one($)
 	
 		function onDocumentEvent(e)
 		{
-			// if (e.type == "touchstart" || e.type == "touchend")
-			// 	e.preventDefault();
-	
 			for (var i = 0; i < hideSpecs.length; i++)
 			{
 				var specs = hideSpecs[i];
