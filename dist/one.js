@@ -6767,59 +6767,6 @@ var one = (function one($)
 		.on("load", one.init.setup)
 		.on("unload", one.init.dispose);
 
-	// if ($.fn.velocity)
-	// {
-	// 	$.fn.animate = function animate(props, arg2, arg3)
-	// 	{
-	// 		var options = $.extend({}, arg2, arg3);
-	// 		if (one.type.isNumber(arg2))
-	// 			options.duration = arg2;
-	//
-	// 		if (one.type.isFunction(arg3))
-	// 			options.complete = arg3;
-	// 		if (one.type.isFunction(arg2))
-	// 			options.complete = arg2;
-	//
-	// 		this.each(function (i, element)
-	// 		{
-	// 			var settings = $.extend({}, options);
-	// 			if (one.type.isFunction(settings.step))
-	// 			{
-	// 				var oldComplete = settings.complete;
-	// 				var oldBegin = settings.begin;
-	//
-	// 				settings.element = element;
-	// 				settings.complete = false;
-	// 				settings.complete = function complete()
-	// 				{
-	// 					settings.complete = true;
-	// 					settings.step.call(settings.element);
-	// 					if (one.type.isFunction(oldComplete))
-	// 						oldComplete.call(this, arguments);
-	// 				};
-	// 				settings.begin = function begin()
-	// 				{
-	// 					if (one.type.isFunction(oldBegin))
-	// 						oldBegin.call(this, arguments);
-	//
-	// 					one.dom.requestAnimationFrame(step)
-	// 				};
-	//
-	// 				function step()
-	// 				{
-	// 					settings.step.call(settings.element);
-	// 					if (settings.complete != true)
-	// 					{
-	// 						one.dom.requestAnimationFrame(step)
-	// 					}
-	// 				}
-	// 			}
-	//
-	// 			$(element).velocity(props, settings);
-	// 		});
-	// 	};
-	// }
-
 	return one;
 
 })(window.jQuery);
