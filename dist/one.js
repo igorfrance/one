@@ -1777,7 +1777,7 @@ var one = (function one($)
 	 * <li>The <c>override</c> object, if it's an object
 	 * <ol><li>if it has a property with the specified name</li></ol></li>
 	 * <li>The default value, if any</li></ol>
-	 * @param {String} name The name of the value to retrieve.
+	 * @param {String} name2 The name of the value to retrieve.
 	 * @param {Object} data The object or element with properties in which to look for property with <c>propName</c>.
 	 * @param {Object} [override] An object or element properties (or attributes) in which to look for property (or attribute)
 	 * with <c>propName</c>.
@@ -1791,32 +1791,31 @@ var one = (function one($)
 	{
 		var dataObject = data && data.jquery ? data[0] : data;
 		var overrideObject = override && override.jquery ? override[0] : override;
-		var propName = name.toLowerCase();
 	
 		var result = defaultValue;
 		if ($type.isElement(overrideObject))
 		{
-			if (overrideObject.getAttribute("data-" + propName))
-				result = overrideObject.getAttribute("data-" + propName);
+			if (overrideObject.getAttribute("data-" + name))
+				result = overrideObject.getAttribute("data-" + name);
 	
-			else if (overrideObject.getAttribute(propName))
-				result = overrideObject.getAttribute(propName);
+			else if (overrideObject.getAttribute(name))
+				result = overrideObject.getAttribute(name);
 		}
-		else if (overrideObject && overrideObject[propName] != undefined)
+		else if (overrideObject && overrideObject[name] != undefined)
 		{
-			result = overrideObject[propName];
+			result = overrideObject[name];
 		}
 		else if ($type.isElement(dataObject))
 		{
-			if (dataObject.getAttribute("data-" + propName))
-				result = dataObject.getAttribute("data-" + propName);
+			if (dataObject.getAttribute("data-" + name))
+				result = dataObject.getAttribute("data-" + name);
 	
-			else if (dataObject.getAttribute(propName))
-				result = dataObject.getAttribute(propName);
+			else if (dataObject.getAttribute(name))
+				result = dataObject.getAttribute(name);
 		}
-		else if (dataObject && dataObject[propName] != undefined)
+		else if (dataObject && dataObject[name] != undefined)
 		{
-			result = dataObject[propName];
+			result = dataObject[name];
 		}
 	
 		if (restrictObject != null)
@@ -2504,6 +2503,16 @@ var one = (function one($)
 		return this.$element;
 	};
 	
+	HtmlControl.prototype.setModel = function HtmlControl$setModel(viewModel)
+	{
+		if (this.viewBinder == null)
+		{
+			this.viewBinder = new ViewBinder(this.$element);
+		}
+	
+		this.viewBinder.apply(viewModel);
+	};
+	
 	/**
 	 * Gets a string that represents this element.
 	 * @returns {String} A string that represents this element.
@@ -2583,6 +2592,421 @@ var one = (function one($)
 			startEventPos: "startEventX"
 		}
 	};
+	
+	var ViewBinder = Dispatcher.extend((function ()
+	{
+		/**
+		 * Placeholder pattern.
+		 * Matches
+		 * @type {RegExp}
+		 */
+		var RX_EXPRESSION = /\$\{([^{}]+)}/g;
+		var RX_LOOPSTART = /^loopstart_(\d+)$/;
+		var RX_LOOPEND = /^loopend$/;
+		var RX_EXPRSTART = /^expr:\$\{([^{}]+)}$/;
+		var RX_EXPREND = /^exprend$/;
+	
+		var initialized = [];
+	
+		function ViewBinder(element)
+		{
+			this.loops = [];
+			this.element = null;
+	
+			if (element)
+				this.initialize(element);
+		}
+	
+		ViewBinder.prototype.initialize = function (element)
+		{
+			this.loops = [];
+			this.element = $(element)[0];
+	
+			if (initialized.indexOf(this.element) == -1)
+			{
+				prepareNode.call(this, this.element);
+				this.element.loops = this.loops;
+				initialized.push(this.element);
+			}
+			else
+			{
+				this.loops = this.element.loops;
+			}
+		};
+	
+		ViewBinder.prototype.apply = function (model)
+		{
+			bindElementNode.call(this, this.element, model);
+		};
+	
+		function prepareNode(node)
+		{
+			switch (node.nodeType)
+			{
+				case $xml.nodeType.ELEMENT:
+					prepareElementNode.call(this, node);
+					break;
+	
+				case $xml.nodeType.TEXT:
+					prepareTextNode.call(this, node);
+					break;
+	
+				default:
+					return;
+			}
+		}
+	
+		function prepareElementNode(node)
+		{
+			for (var i = 0; i < node.childNodes.length; i++)
+					prepareNode.call(this, node.childNodes[i]);
+	
+			var foreach = node.getAttribute("data-foreach");
+			var visible = node.getAttribute("data-visible");
+			var hidden = node.getAttribute("data-hidden");
+	
+			if (foreach)
+			{
+				var index = this.loops.length;
+				var commentStart = node.ownerDocument.createComment("loopstart_" + index);
+				var commentEnd = node.ownerDocument.createComment("loopend");
+				node.parentNode.insertBefore(commentStart, node);
+				node.parentNode.insertBefore(commentEnd, node);
+				node.parentNode.removeChild(node);
+	
+				node.removeAttribute("data-foreach");
+				this.loops.push({ element: node, expression: foreach });
+			}
+			else
+			{
+				if (visible)
+					$(node).hide();
+	
+				attachEvents.call(this, node);
+			}
+		}
+	
+		function prepareTextNode(node)
+		{
+			var text = node.nodeValue;
+			if (text.match(RX_EXPRESSION))
+			{
+				var start = 0;
+				var slices = [];
+				var keys = [];
+	
+				// run greedy RX_EXPRESSION against the node text to find all the placeholders and their insert points
+				text.replace(RX_EXPRESSION, function (match, key, index)
+				{
+					var slice = text.substring(start, index);
+					slices.push(slice);
+					keys.push(key);
+					start = index + match.length;
+				});
+	
+				// now replace the placeholders with comments
+				for (var i = 0; i < slices.length; i++)
+				{
+					node.parentNode.insertBefore(node.ownerDocument.createTextNode(slices[i]), node);
+					node.parentNode.insertBefore(node.ownerDocument.createComment("expr:${" + keys[i] + "}"), node);
+					node.parentNode.insertBefore(node.ownerDocument.createComment("exprend"), node);
+				}
+	
+				node.parentNode.removeChild(node);
+			}
+		}
+	
+		function attachEvents(element)
+		{
+			for (var i = 0; i < element.childNodes.length; i++)
+			{
+				if (element.childNodes[i].nodeType == $xml.nodeType.ELEMENT)
+					attachEvents.call(this, element.childNodes[i]);
+			}
+	
+			for (var i = 0; i < element.attributes.length; i++)
+			{
+				var attr = element.attributes[i];
+				if (attr.name.indexOf("data-emit-") != 0)
+					continue;
+	
+				var params = [];
+				var sourceEventName = attr.name.replace("data-emit-", "");
+				var targetEventName = attr.value.replace(/\((.*)\)/, function ($0, $1)
+				{
+					if ($1)
+					{
+						params = $1.replace(/\s/g, ",").replace(/,{2,}/,",").split(",");
+					}
+				});
+	
+				attachEvent.call(this, element, sourceEventName, targetEventName, params);
+			}
+		}
+	
+		function attachEvent(element, eventName, emitEventName, params)
+		{
+			this.registerEvent(emitEventName);
+	
+			var self = this;
+			element.on(eventName, function (e)
+			{
+				var event = new one.Event(self, emitEventName, params);
+				event.originalEvent = e;
+				self.fire(emitEventName, event);
+			});
+		}
+	
+		function bindElementNode(element, model)
+		{
+			for (var i = 0; i < element.attributes.length; i++)
+			{
+				var attr = element.attributes[i];
+	
+				switch (attr.name)
+				{
+					case "data-class":
+						bindClasses(element, model);
+						break;
+	
+					case "data-visible":
+					case "data-hidden":
+						bindVisibility(element, model, attr.name);
+						break;
+	
+					default:
+						if (attr.value.match(RX_EXPRESSION))
+						{
+							var processed = bindString(attr.value, model);
+							element.setAttribute(attr.name, processed);
+						}
+				}
+			}
+	
+			var nodes = [];
+			for (var i = 0; i < element.childNodes.length; i++)
+				nodes.push(element.childNodes[i]);
+	
+			for (var i = 0; i < nodes.length; i++)
+			{
+				var node = nodes[i];
+				if (node.nodeType == $xml.nodeType.COMMENT)
+				{
+					bindCommentNode.call(this, node, model);
+				}
+				else if (node.nodeType == $xml.nodeType.ELEMENT)
+				{
+					bindElementNode.call(this, node, model);
+				}
+			}
+		}
+	
+		function bindCommentNode(node, model)
+		{
+			if (node.nodeValue.match(RX_LOOPSTART))
+				bindLoopCommentNode.call(this, node, model);
+	
+			else if (node.nodeValue.match(RX_EXPRSTART))
+				bindTextCommentNode.call(this, node, model);
+		}
+	
+		function bindLoopCommentNode(node, model)
+		{
+			cleanupGeneratedContent(node);
+	
+			var loopIndex = node.nodeValue.match(RX_LOOPSTART)[1];
+			var loop = this.loops[loopIndex];
+			var collection = getValue(model, loop.expression);
+			var following = node.parentNode.childNodes[indexOf(node) + 1];
+			var index = 0;
+			for (var key in collection)
+			{
+				if (!collection.hasOwnProperty(key))
+					continue;
+	
+				var instance = loop.element.cloneNode(true);
+				var iterationModel = $.extend({}, model);
+				if ($type.isObject(collection[key]))
+					iterationModel = $.extend(iterationModel, collection[key]);
+	
+				iterationModel = $.extend(iterationModel,
+				{
+					_: collection[key],
+					$index: index,
+					$current: collection[key],
+					$key: key
+				});
+	
+				bindElementNode.call(this, instance, iterationModel);
+				attachEvents.call(this, instance);
+	
+				node.parentNode.insertBefore(instance, following);
+				index += 1;
+			}
+		}
+	
+		function bindTextCommentNode(node, model)
+		{
+			cleanupGeneratedContent(node);
+	
+			var expression = node.nodeValue.match(RX_EXPRSTART)[1];
+			var value = getValue(model, expression);
+			var textNode = node.ownerDocument.createTextNode(value);
+			node.parentNode.insertBefore(textNode, node.parentNode.childNodes[indexOf(node) + 1]);
+		}
+	
+		function cleanupGeneratedContent(commentStartNode)
+		{
+			var endExpression = commentStartNode.nodeValue.match(RX_LOOPSTART) ? RX_LOOPEND : RX_EXPREND;
+	
+			var parent = commentStartNode.parentNode;
+			var elements = [];
+			var capturing = false;
+			for (var i = 0; i < parent.childNodes.length; i++)
+			{
+				var node = parent.childNodes[i];
+				if (node == commentStartNode)
+				{
+					capturing = true;
+					continue;
+				}
+	
+				if (capturing)
+				{
+					if (node.nodeType == $xml.nodeType.COMMENT && node.nodeValue.match(endExpression))
+						break;
+	
+					elements.push(node);
+				}
+			}
+	
+			for (var i = 0; i < elements.length; i++)
+				parent.removeChild(elements[i]);
+		}
+	
+		function bindClasses(element, model)
+		{
+			var classSpec = element.getAttribute("data-class");
+			var classObj = {};
+			try
+			{
+				classObj = JSON.parse(classSpec);
+			}
+			catch(error)
+			{
+				console.debug(classSpec);
+				console.error(error);
+				return;
+			}
+	
+			var $el = $(element);
+			for (var className in classObj)
+			{
+				var expressionResult = evaluateExpression(classObj[className], model);
+				var classOn = (expressionResult == true || expressionResult == "true");
+				$el.toggleClass(className, classOn);
+			}
+		}
+	
+		function bindVisibility(element, model, attrName)
+		{
+			var expressionText = element.getAttribute(attrName);
+			var expressionResult = evaluateExpression(bindString(expressionText, model), model);
+	
+			var valid = (expressionResult == true || expressionResult == "true");
+			var show = attrName == "data-visible";
+	
+			if (show)
+				$(element).toggle(valid);
+			else
+				$(element).toggle(!valid);
+		}
+	
+		function bindString(template, model)
+		{
+			return template.replace(RX_EXPRESSION, function (match, expression)
+			{
+				return evaluateExpression(expression, model);
+			});
+		}
+	
+		function evaluateExpression(expression, model)
+		{
+			var parts = expression.trim().split(" ");
+			for (var i = 0; i < parts.length; i++)
+			{
+				if (isValidModelProperty(parts[i], model))
+				{
+					var value = getValue(model, parts[i]);
+					if (value == undefined || value == null)
+						value = "";
+	
+					parts[i] = value;
+				}
+			}
+	
+			expression = parts.join(" ");
+			if (parts.length == 1)
+				return expression;
+	
+			try
+			{
+				return eval(expression);
+			}
+			catch(error)
+			{
+				console.error(expression + ": " + error);
+				return error;
+			}
+		}
+	
+		function indexOf(node)
+		{
+			for (var i = 0; i < node.parentNode.childNodes.length; i++)
+			{
+				if (node.parentNode.childNodes[i] == node)
+					return i;
+			}
+	
+			return -1;
+		}
+	
+		function getValue(model, key)
+		{
+			if (model[key])
+				return model[key];
+	
+			var parts = key.split(".");
+	
+			var index = 0;
+			var currentObject = model;
+			var result, currentKey;
+	
+			while(currentObject != null && index < parts.length)
+			{
+				currentKey = parts[index++];
+				currentObject = currentObject[currentKey];
+				result = currentObject;
+			}
+	
+			return result;
+		}
+	
+		function isValidModelProperty(name, model)
+		{
+			var key1 = name.split(".")[0];
+			return model[key1] != undefined;
+		}
+	
+		function onViewEvent()
+		{
+	
+		}
+	
+		return (ViewBinder);
+	
+	})());
+	
 	
 
 	/**
@@ -4579,7 +5003,7 @@ var one = (function one($)
 		 * @param {Node|String} value Either the XML node that will be returned, or the string to create a new document with.
 		 * @returns {Node} Either the XML node that was specified or an XML document initialized with the specified string.
 		 */
-		var xml = function xml(value)
+		var $xml = function xml(value)
 		{
 			if ($type.isNode(value))
 				return value;
@@ -4588,7 +5012,7 @@ var one = (function one($)
 			{
 				if (value.trim().indexOf("<") == 0)
 				{
-					return xml.document(value);
+					return $xml.document(value);
 				}
 			}
 	
@@ -4610,7 +5034,7 @@ var one = (function one($)
 		 * uses qualified names in its expression this argument is required (and it must define the namespace prefixes used).
 		 * @returns {String} The selected text content
 		 */
-		xml.text = function (xpath, subject, namespaces)
+		$xml.text = function (xpath, subject, namespaces)
 		{
 			var xpath_ = $string.EMPTY;
 			var subject_ = null;
@@ -4639,7 +5063,7 @@ var one = (function one($)
 				selection = [subject_];
 	
 			else
-				selection = xml.select(xpath_, subject_ || document, namespaces_);
+				selection = $xml.select(xpath_, subject_ || document, namespaces_);
 	
 			var result = [];
 			for (i = 0; i < selection.length; i++)
@@ -4679,28 +5103,28 @@ var one = (function one($)
 		 * @param {string|Node} node The node (or xpath of the node) whose xml string to get.
 		 * @returns {string} The xml text of the specified <c>node</c>.
 		 */
-		xml.toXml = function(node)
+		$xml.toXml = function(node)
 		{
 			if ($type.isString(node))
-				node = xml.select(node)[0];
+				node = $xml.select(node)[0];
 	
 			if ($dom.isIE())
 				return node.xml;
 	
 			if (node == document || node.ownerDocument == document)
-				return xml.serialize(node);
+				return $xml.serialize(node);
 	
 			return new XMLSerializer().serializeToString(Node(node));
 	
 		};
 	
-		xml.serialize = function (node)
+		$xml.serialize = function (node)
 		{
 			if (node == null || node.nodeType == null)
 				return $string.EMPTY;
 	
 			if (node.nodeType == nodeType.DOCUMENT)
-				return xml.serialize(node.documentElement);
+				return $xml.serialize(node.documentElement);
 	
 			var rslt = [];
 			var skipNamespace = false;
@@ -4727,7 +5151,7 @@ var one = (function one($)
 					rslt.push(" ");
 					rslt.push(node.attributes[i].name);
 					rslt.push("=\"");
-					rslt.push(xml.escape(attrValue, true));
+					rslt.push($xml.escape(attrValue, true));
 					rslt.push("\"");
 				}
 	
@@ -4741,23 +5165,23 @@ var one = (function one($)
 						var child = node.childNodes[i];
 						if (child.nodeType == nodeType.ELEMENT)
 						{
-							rslt.push(xml.serialize(child));
+							rslt.push($xml.serialize(child));
 						}
 						if (child.nodeType == nodeType.COMMENT)
 						{
 							rslt.push("<!--");
-							rslt.push(xml.text(child));
+							rslt.push($xml.text(child));
 							rslt.push("-->");
 						}
 						if (child.nodeType == nodeType.CDATA_SECTION)
 						{
 							rslt.push("<![CDATA[");
-							rslt.push(xml.text(child));
+							rslt.push($xml.text(child));
 							rslt.push("]]>");
 						}
 						if (child.nodeType == nodeType.TEXT)
 						{
-							rslt.push(xml.escape(xml.text(child)));
+							rslt.push($xml.escape($xml.text(child)));
 						}
 					}
 					rslt.push("</");
@@ -4769,7 +5193,7 @@ var one = (function one($)
 			return rslt.join($string.EMPTY);
 		};
 	
-		xml.toObject = function(node)
+		$xml.toObject = function(node)
 		{
 			if (node == null || node.nodeType == null)
 				return null;
@@ -4778,7 +5202,7 @@ var one = (function one($)
 			if (node.nodeType == nodeType.DOCUMENT)
 			{
 				var rootName = node.documentElement.nodeName;
-				result[rootName] = xml.toObject(node.documentElement);
+				result[rootName] = $xml.toObject(node.documentElement);
 			}
 			else if (node.nodeType == nodeType.ELEMENT)
 			{
@@ -4792,7 +5216,7 @@ var one = (function one($)
 					var child = node.childNodes[i];
 					if (child.nodeType == nodeType.ELEMENT)
 					{
-						var parsed = xml.toObject(child);
+						var parsed = $xml.toObject(child);
 						if (result[child.nodeName] != null)
 						{
 							if (!$type.isArray(result[child.nodeName]))
@@ -4810,7 +5234,7 @@ var one = (function one($)
 			return result;
 		};
 	
-		xml.resolver = function(namespaces)
+		$xml.resolver = function(namespaces)
 		{
 			$log.assert($type.isObject(namespaces), "Argument 'namespaces' should be an object");
 	
@@ -4829,7 +5253,7 @@ var one = (function one($)
 		 * The property names should be the namespace prefixes and property values the actual namespace URI's.
 		 * @returns {Node[]} An array of nodes that were selected by the <c>xpath</c> expression.
 		 */
-		xml.select = function(xpath, subject, namespaces)
+		$xml.select = function(xpath, subject, namespaces)
 		{
 			if (arguments.length == 2 && $type.isString(arguments[1]))
 			{
@@ -4854,7 +5278,7 @@ var one = (function one($)
 			else
 			{
 				var nsResolver = namespaces
-					? xml.resolver(namespaces)
+					? $xml.resolver(namespaces)
 					: null;
 	
 				var result = ownerDocument.evaluate(xpath, subject, nsResolver, ORDERED_NODE_ITERATOR_TYPE, null);
@@ -4878,7 +5302,7 @@ var one = (function one($)
 		 * specified <c>url</c>.
 		 * @returns {XMLHttpRequest} The jquery XMLHttpRequest created for the specified <c>url</c>.
 		 */
-		xml.load = function(url, onload, onerror)
+		$xml.load = function(url, onload, onerror)
 		{
 			$log.assert($type.isString(url), "Argument 'url' is required");
 	
@@ -4889,7 +5313,7 @@ var one = (function one($)
 					var document;
 					try
 					{
-						document = xml.document(request.responseText);
+						document = $xml.document(request.responseText);
 						if ($type.isFunction(onload))
 							onload(document);
 					}
@@ -4914,11 +5338,11 @@ var one = (function one($)
 		 * @param {string|Document} [source] Optional string or document whose html to use to initialize the returned document with.
 		 * @returns {Document} A new Document, optionally initialized with the specified <c>source</c>.
 		 */
-		xml.document = function(source)
+		$xml.document = function(source)
 		{
 			if ($type.isDocument(source))
 			{
-				source = xml.serialize(source);
+				source = $xml.serialize(source);
 			}
 	
 			var document = null;
@@ -4948,16 +5372,16 @@ var one = (function one($)
 			return document;
 		};
 	
-		xml.processor = function(source)
+		$xml.processor = function(source)
 		{
-			source = xml(source);
+			source = $xml(source);
 			if (source == null)
 				return null;
 	
 			var processor = null;
 			if ($dom.isIE())
 			{
-				var ftDocument = xml.document(source.xml);
+				var ftDocument = $xml.document(source.xml);
 				var template = new ActiveXObject("MSXML2.XslTemplate");
 				template.stylesheet = ftDocument;
 				processor = template.createProcessor();
@@ -4971,7 +5395,7 @@ var one = (function one($)
 			return processor;
 		};
 	
-		xml.transform = function(document, processor)
+		$xml.transform = function(document, processor)
 		{
 			$log.assert($type.isDocument(document), "Argument 'document' should be a document.");
 			$log.assert(!$type.isNull(processor), "Argument 'xslProcessor' is required");
@@ -4979,7 +5403,7 @@ var one = (function one($)
 			var result = null;
 			if ($dom.isIE())
 			{
-				result = xml.document();
+				result = $xml.document();
 				processor.input = document;
 				processor.output = result;
 				processor.transform();
@@ -4992,7 +5416,7 @@ var one = (function one($)
 			return result;
 		};
 	
-		xml.escape = function(value, quotes)
+		$xml.escape = function(value, quotes)
 		{
 			var result = String(value)
 				.replace(/&(?!amp;)/g, "&amp;")
@@ -5027,7 +5451,7 @@ var one = (function one($)
 				var parseError = document.getElementsByTagNameNS(parseErrorNs, "parsererror")[0];
 				if (parseError != null)
 				{
-					var message = xml.text(parseError).replace(/line(?: number)? (\d+)(?:,)?(?: at)? column (\d+):/i, function replace($0, $1, $2)
+					var message = $xml.text(parseError).replace(/line(?: number)? (\d+)(?:,)?(?: at)? column (\d+):/i, function replace($0, $1, $2)
 					{
 						info.line = parseInt($1);
 						info.column = parseInt($2);
@@ -5064,10 +5488,10 @@ var one = (function one($)
 			return parser;
 		}
 	
-		xml.nodeType = nodeType;
+		$xml.nodeType = nodeType;
 	
-		return xml;
-		
+		return $xml;
+	
 	})();
 	
 	/**
@@ -5300,6 +5724,68 @@ var one = (function one($)
 	
 			return this;
 		};
+	
+		/*evt.pressStart = function (element)
+		{
+			$(element).on("touchstart", onElementTouchStart);
+			$(element).on("mousedown", onElementMouseDown);
+	
+			$(element).on("touchmove", onElementTouchMove);
+			$(element).on("mousemove", onElementMouseMove);
+	
+		};
+	
+		evt.pressEnd = function ()
+		{
+			$(element).on("touchend", onElementTouchEnd);
+			$(element).on("mouseup", onElementMouseUp);
+	
+		}
+	
+		evt.pressMove = function ()
+		{
+	
+		}
+	
+		function onElementTouchStart(e)
+		{
+	
+		}
+	
+		function onElementTouchMove(e)
+		{
+	
+		}
+	
+		function onElementTouchEnd(e)
+		{
+	
+		}
+	
+		function onElementMouseDown(e)
+		{
+	
+		}
+	
+		function onElementMouseMove(e)
+		{
+	
+		}
+	
+		function onElementMouseUp(e)
+		{
+	
+		}
+	
+		function onElementTouchStart(e)
+		{
+	
+		}
+	
+		function onElementTouchStart(e)
+		{
+	
+		}*/
 	
 		evt.isMouseInRange = function isMouseInRange(e, elem)
 		{
@@ -6737,6 +7223,7 @@ var one = (function one($)
 	one.Settings = Settings;
 	one.Initializer = Initializer;
 	one.HtmlControl = HtmlControl;
+	one.ViewBinder = ViewBinder;
 
 	one.type = $type;
 	one.string = $string;

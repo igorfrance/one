@@ -53,6 +53,16 @@ HtmlControl.prototype.element = function HtmlControl$element()
 	return this.$element;
 };
 
+HtmlControl.prototype.setModel = function HtmlControl$setModel(viewModel)
+{
+	if (this.viewBinder == null)
+	{
+		this.viewBinder = new ViewBinder(this.$element);
+	}
+
+	this.viewBinder.apply(viewModel);
+};
+
 /**
  * Gets a string that represents this element.
  * @returns {String} A string that represents this element.

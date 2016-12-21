@@ -201,6 +201,68 @@ var $evt = new function ()
 		return this;
 	};
 
+	/*evt.pressStart = function (element)
+	{
+		$(element).on("touchstart", onElementTouchStart);
+		$(element).on("mousedown", onElementMouseDown);
+
+		$(element).on("touchmove", onElementTouchMove);
+		$(element).on("mousemove", onElementMouseMove);
+
+	};
+
+	evt.pressEnd = function ()
+	{
+		$(element).on("touchend", onElementTouchEnd);
+		$(element).on("mouseup", onElementMouseUp);
+
+	}
+
+	evt.pressMove = function ()
+	{
+
+	}
+
+	function onElementTouchStart(e)
+	{
+
+	}
+
+	function onElementTouchMove(e)
+	{
+
+	}
+
+	function onElementTouchEnd(e)
+	{
+
+	}
+
+	function onElementMouseDown(e)
+	{
+
+	}
+
+	function onElementMouseMove(e)
+	{
+
+	}
+
+	function onElementMouseUp(e)
+	{
+
+	}
+
+	function onElementTouchStart(e)
+	{
+
+	}
+
+	function onElementTouchStart(e)
+	{
+
+	}*/
+
 	evt.isMouseInRange = function isMouseInRange(e, elem)
 	{
 		if (one.drag.active)

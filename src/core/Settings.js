@@ -40,7 +40,7 @@ Prototype.extend(Settings);
  * <li>The <c>override</c> object, if it's an object
  * <ol><li>if it has a property with the specified name</li></ol></li>
  * <li>The default value, if any</li></ol>
- * @param {String} name The name of the value to retrieve.
+ * @param {String} name2 The name of the value to retrieve.
  * @param {Object} data The object or element with properties in which to look for property with <c>propName</c>.
  * @param {Object} [override] An object or element properties (or attributes) in which to look for property (or attribute)
  * with <c>propName</c>.
@@ -54,32 +54,31 @@ Settings.prototype.getValue = function getValue(name, data, override, defaultVal
 {
 	var dataObject = data && data.jquery ? data[0] : data;
 	var overrideObject = override && override.jquery ? override[0] : override;
-	var propName = name.toLowerCase();
 
 	var result = defaultValue;
 	if ($type.isElement(overrideObject))
 	{
-		if (overrideObject.getAttribute("data-" + propName))
-			result = overrideObject.getAttribute("data-" + propName);
+		if (overrideObject.getAttribute("data-" + name))
+			result = overrideObject.getAttribute("data-" + name);
 
-		else if (overrideObject.getAttribute(propName))
-			result = overrideObject.getAttribute(propName);
+		else if (overrideObject.getAttribute(name))
+			result = overrideObject.getAttribute(name);
 	}
-	else if (overrideObject && overrideObject[propName] != undefined)
+	else if (overrideObject && overrideObject[name] != undefined)
 	{
-		result = overrideObject[propName];
+		result = overrideObject[name];
 	}
 	else if ($type.isElement(dataObject))
 	{
-		if (dataObject.getAttribute("data-" + propName))
-			result = dataObject.getAttribute("data-" + propName);
+		if (dataObject.getAttribute("data-" + name))
+			result = dataObject.getAttribute("data-" + name);
 
-		else if (dataObject.getAttribute(propName))
-			result = dataObject.getAttribute(propName);
+		else if (dataObject.getAttribute(name))
+			result = dataObject.getAttribute(name);
 	}
-	else if (dataObject && dataObject[propName] != undefined)
+	else if (dataObject && dataObject[name] != undefined)
 	{
-		result = dataObject[propName];
+		result = dataObject[name];
 	}
 
 	if (restrictObject != null)

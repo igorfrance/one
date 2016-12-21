@@ -43,7 +43,7 @@ var $xml = (function xml()
 	 * @param {Node|String} value Either the XML node that will be returned, or the string to create a new document with.
 	 * @returns {Node} Either the XML node that was specified or an XML document initialized with the specified string.
 	 */
-	var xml = function xml(value)
+	var $xml = function xml(value)
 	{
 		if ($type.isNode(value))
 			return value;
@@ -52,7 +52,7 @@ var $xml = (function xml()
 		{
 			if (value.trim().indexOf("<") == 0)
 			{
-				return xml.document(value);
+				return $xml.document(value);
 			}
 		}
 
@@ -74,7 +74,7 @@ var $xml = (function xml()
 	 * uses qualified names in its expression this argument is required (and it must define the namespace prefixes used).
 	 * @returns {String} The selected text content
 	 */
-	xml.text = function (xpath, subject, namespaces)
+	$xml.text = function (xpath, subject, namespaces)
 	{
 		var xpath_ = $string.EMPTY;
 		var subject_ = null;
@@ -103,7 +103,7 @@ var $xml = (function xml()
 			selection = [subject_];
 
 		else
-			selection = xml.select(xpath_, subject_ || document, namespaces_);
+			selection = $xml.select(xpath_, subject_ || document, namespaces_);
 
 		var result = [];
 		for (i = 0; i < selection.length; i++)
@@ -143,28 +143,28 @@ var $xml = (function xml()
 	 * @param {string|Node} node The node (or xpath of the node) whose xml string to get.
 	 * @returns {string} The xml text of the specified <c>node</c>.
 	 */
-	xml.toXml = function(node)
+	$xml.toXml = function(node)
 	{
 		if ($type.isString(node))
-			node = xml.select(node)[0];
+			node = $xml.select(node)[0];
 
 		if ($dom.isIE())
 			return node.xml;
 
 		if (node == document || node.ownerDocument == document)
-			return xml.serialize(node);
+			return $xml.serialize(node);
 
 		return new XMLSerializer().serializeToString(Node(node));
 
 	};
 
-	xml.serialize = function (node)
+	$xml.serialize = function (node)
 	{
 		if (node == null || node.nodeType == null)
 			return $string.EMPTY;
 
 		if (node.nodeType == nodeType.DOCUMENT)
-			return xml.serialize(node.documentElement);
+			return $xml.serialize(node.documentElement);
 
 		var rslt = [];
 		var skipNamespace = false;
@@ -191,7 +191,7 @@ var $xml = (function xml()
 				rslt.push(" ");
 				rslt.push(node.attributes[i].name);
 				rslt.push("=\"");
-				rslt.push(xml.escape(attrValue, true));
+				rslt.push($xml.escape(attrValue, true));
 				rslt.push("\"");
 			}
 
@@ -205,23 +205,23 @@ var $xml = (function xml()
 					var child = node.childNodes[i];
 					if (child.nodeType == nodeType.ELEMENT)
 					{
-						rslt.push(xml.serialize(child));
+						rslt.push($xml.serialize(child));
 					}
 					if (child.nodeType == nodeType.COMMENT)
 					{
 						rslt.push("<!--");
-						rslt.push(xml.text(child));
+						rslt.push($xml.text(child));
 						rslt.push("-->");
 					}
 					if (child.nodeType == nodeType.CDATA_SECTION)
 					{
 						rslt.push("<![CDATA[");
-						rslt.push(xml.text(child));
+						rslt.push($xml.text(child));
 						rslt.push("]]>");
 					}
 					if (child.nodeType == nodeType.TEXT)
 					{
-						rslt.push(xml.escape(xml.text(child)));
+						rslt.push($xml.escape($xml.text(child)));
 					}
 				}
 				rslt.push("</");
@@ -233,7 +233,7 @@ var $xml = (function xml()
 		return rslt.join($string.EMPTY);
 	};
 
-	xml.toObject = function(node)
+	$xml.toObject = function(node)
 	{
 		if (node == null || node.nodeType == null)
 			return null;
@@ -242,7 +242,7 @@ var $xml = (function xml()
 		if (node.nodeType == nodeType.DOCUMENT)
 		{
 			var rootName = node.documentElement.nodeName;
-			result[rootName] = xml.toObject(node.documentElement);
+			result[rootName] = $xml.toObject(node.documentElement);
 		}
 		else if (node.nodeType == nodeType.ELEMENT)
 		{
@@ -256,7 +256,7 @@ var $xml = (function xml()
 				var child = node.childNodes[i];
 				if (child.nodeType == nodeType.ELEMENT)
 				{
-					var parsed = xml.toObject(child);
+					var parsed = $xml.toObject(child);
 					if (result[child.nodeName] != null)
 					{
 						if (!$type.isArray(result[child.nodeName]))
@@ -274,7 +274,7 @@ var $xml = (function xml()
 		return result;
 	};
 
-	xml.resolver = function(namespaces)
+	$xml.resolver = function(namespaces)
 	{
 		$log.assert($type.isObject(namespaces), "Argument 'namespaces' should be an object");
 
@@ -293,7 +293,7 @@ var $xml = (function xml()
 	 * The property names should be the namespace prefixes and property values the actual namespace URI's.
 	 * @returns {Node[]} An array of nodes that were selected by the <c>xpath</c> expression.
 	 */
-	xml.select = function(xpath, subject, namespaces)
+	$xml.select = function(xpath, subject, namespaces)
 	{
 		if (arguments.length == 2 && $type.isString(arguments[1]))
 		{
@@ -318,7 +318,7 @@ var $xml = (function xml()
 		else
 		{
 			var nsResolver = namespaces
-				? xml.resolver(namespaces)
+				? $xml.resolver(namespaces)
 				: null;
 
 			var result = ownerDocument.evaluate(xpath, subject, nsResolver, ORDERED_NODE_ITERATOR_TYPE, null);
@@ -342,7 +342,7 @@ var $xml = (function xml()
 	 * specified <c>url</c>.
 	 * @returns {XMLHttpRequest} The jquery XMLHttpRequest created for the specified <c>url</c>.
 	 */
-	xml.load = function(url, onload, onerror)
+	$xml.load = function(url, onload, onerror)
 	{
 		$log.assert($type.isString(url), "Argument 'url' is required");
 
@@ -353,7 +353,7 @@ var $xml = (function xml()
 				var document;
 				try
 				{
-					document = xml.document(request.responseText);
+					document = $xml.document(request.responseText);
 					if ($type.isFunction(onload))
 						onload(document);
 				}
@@ -378,11 +378,11 @@ var $xml = (function xml()
 	 * @param {string|Document} [source] Optional string or document whose html to use to initialize the returned document with.
 	 * @returns {Document} A new Document, optionally initialized with the specified <c>source</c>.
 	 */
-	xml.document = function(source)
+	$xml.document = function(source)
 	{
 		if ($type.isDocument(source))
 		{
-			source = xml.serialize(source);
+			source = $xml.serialize(source);
 		}
 
 		var document = null;
@@ -412,16 +412,16 @@ var $xml = (function xml()
 		return document;
 	};
 
-	xml.processor = function(source)
+	$xml.processor = function(source)
 	{
-		source = xml(source);
+		source = $xml(source);
 		if (source == null)
 			return null;
 
 		var processor = null;
 		if ($dom.isIE())
 		{
-			var ftDocument = xml.document(source.xml);
+			var ftDocument = $xml.document(source.xml);
 			var template = new ActiveXObject("MSXML2.XslTemplate");
 			template.stylesheet = ftDocument;
 			processor = template.createProcessor();
@@ -435,7 +435,7 @@ var $xml = (function xml()
 		return processor;
 	};
 
-	xml.transform = function(document, processor)
+	$xml.transform = function(document, processor)
 	{
 		$log.assert($type.isDocument(document), "Argument 'document' should be a document.");
 		$log.assert(!$type.isNull(processor), "Argument 'xslProcessor' is required");
@@ -443,7 +443,7 @@ var $xml = (function xml()
 		var result = null;
 		if ($dom.isIE())
 		{
-			result = xml.document();
+			result = $xml.document();
 			processor.input = document;
 			processor.output = result;
 			processor.transform();
@@ -456,7 +456,7 @@ var $xml = (function xml()
 		return result;
 	};
 
-	xml.escape = function(value, quotes)
+	$xml.escape = function(value, quotes)
 	{
 		var result = String(value)
 			.replace(/&(?!amp;)/g, "&amp;")
@@ -491,7 +491,7 @@ var $xml = (function xml()
 			var parseError = document.getElementsByTagNameNS(parseErrorNs, "parsererror")[0];
 			if (parseError != null)
 			{
-				var message = xml.text(parseError).replace(/line(?: number)? (\d+)(?:,)?(?: at)? column (\d+):/i, function replace($0, $1, $2)
+				var message = $xml.text(parseError).replace(/line(?: number)? (\d+)(?:,)?(?: at)? column (\d+):/i, function replace($0, $1, $2)
 				{
 					info.line = parseInt($1);
 					info.column = parseInt($2);
@@ -528,8 +528,8 @@ var $xml = (function xml()
 		return parser;
 	}
 
-	xml.nodeType = nodeType;
+	$xml.nodeType = nodeType;
 
-	return xml;
-	
+	return $xml;
+
 })();

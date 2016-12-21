@@ -24,6 +24,7 @@ var one = (function one($)
 	/* @include controls/ControlTypeInfo.js  */
 	/* @include controls/ControlRegistry.js  */
 	/* @include controls/HtmlControl.js  */
+	/* @include controls/ViewBinder.js  */
 
 	/* @include utils/Css.js  */
 	/* @include utils/Dom.js  */
@@ -47,6 +48,7 @@ var one = (function one($)
 	one.Settings = Settings;
 	one.Initializer = Initializer;
 	one.HtmlControl = HtmlControl;
+	one.ViewBinder = ViewBinder;
 
 	one.type = $type;
 	one.string = $string;
