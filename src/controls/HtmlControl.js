@@ -57,7 +57,7 @@ HtmlControl.prototype.setModel = function HtmlControl$setModel(viewModel)
 {
 	if (this.viewBinder == null)
 	{
-		this.viewBinder = new ViewBinder(this.$element);
+		this.viewBinder = new ModelBinder(this.$element);
 	}
 
 	this.viewBinder.apply(viewModel);

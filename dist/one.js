@@ -2507,7 +2507,7 @@ var one = (function one($)
 	{
 		if (this.viewBinder == null)
 		{
-			this.viewBinder = new ViewBinder(this.$element);
+			this.viewBinder = new ModelBinder(this.$element);
 		}
 	
 		this.viewBinder.apply(viewModel);
@@ -2593,7 +2593,7 @@ var one = (function one($)
 		}
 	};
 	
-	var ViewBinder = Dispatcher.extend((function ()
+	var ModelBinder = (function ()
 	{
 		/**
 		 * Placeholder pattern.
@@ -2608,16 +2608,20 @@ var one = (function one($)
 	
 		var initialized = [];
 	
-		function ViewBinder(element)
+		var ModelBinder = Dispatcher.extend(function (element)
 		{
+			this.construct();
+	
 			this.loops = [];
 			this.element = null;
+			this.template = null;
+			this.model = null;
 	
 			if (element)
 				this.initialize(element);
-		}
+		});
 	
-		ViewBinder.prototype.initialize = function (element)
+		ModelBinder.prototype.initialize = function (element)
 		{
 			this.loops = [];
 			this.element = $(element)[0];
@@ -2634,8 +2638,9 @@ var one = (function one($)
 			}
 		};
 	
-		ViewBinder.prototype.apply = function (model)
+		ModelBinder.prototype.setModel = function (model)
 		{
+			this.model = model;
 			bindElementNode.call(this, this.element, model);
 		};
 	
@@ -2736,7 +2741,8 @@ var one = (function one($)
 				{
 					if ($1)
 					{
-						params = $1.replace(/\s/g, ",").replace(/,{2,}/,",").split(",");
+						params = $1.replace(/\s*,\s*/g, ",").split(",");
+						return "";
 					}
 				});
 	
@@ -2744,21 +2750,59 @@ var one = (function one($)
 			}
 		}
 	
-		function attachEvent(element, eventName, emitEventName, params)
+		function attachEvent(element, eventName, emitEventName, eventParams)
 		{
 			this.registerEvent(emitEventName);
 	
 			var self = this;
-			element.on(eventName, function (e)
+			var $element = $(element);
+			$element.off(eventName).on(eventName, function (e)
 			{
-				var event = new one.Event(self, emitEventName, params);
+				var params = eventParams.map(function (param)
+				{
+					return evaluateExpression(param, self.model);
+				});
+	
+				var event = new $evt.Event(self, emitEventName, params);
 				event.originalEvent = e;
 				self.fire(emitEventName, event);
+				console.log("Firing {0} from event {1} with params: {2}".format(emitEventName, e.type, params));
 			});
+		}
+	
+		function reset(element)
+		{
+			var comments = [];
+			for (var i = 0; i < element.childNodes.length; i++)
+			{
+				var node = element.childNodes[i];
+				if (node.nodeType == $xml.nodeType.COMMENT)
+				{
+					if (node.nodeValue.match(RX_LOOPSTART) || node.nodeValue.match(RX_EXPRSTART))
+						comments.push(node);
+				}
+			}
+	
+			for (var j = 0; j < comments.length; j++)
+			{
+				cleanupGeneratedContent(comments[j]);
+			}
+	
+			for (var k = 0; k < element.attributes.length; k++)
+			{
+				var attr = element.attributes[k];
+				if (attr.name.indexOf("data-attr-") == 0)
+				{
+					var attrName = attr.name.substring(10);
+					element.removeAttribute(attrName);
+				}
+			}
 		}
 	
 		function bindElementNode(element, model)
 		{
+			reset(element);
+	
 			for (var i = 0; i < element.attributes.length; i++)
 			{
 				var attr = element.attributes[i];
@@ -2775,10 +2819,14 @@ var one = (function one($)
 						break;
 	
 					default:
-						if (attr.value.match(RX_EXPRESSION))
+						if (attr.name.indexOf("data-attr-") == 0)
 						{
-							var processed = bindString(attr.value, model);
-							element.setAttribute(attr.name, processed);
+							var attrName = attr.name.substring(10);
+							if (attr.value.match(RX_EXPRESSION))
+							{
+								var processed = bindString(attr.value, model);
+								element.setAttribute(attrName, processed);
+							}
 						}
 				}
 			}
@@ -3003,9 +3051,9 @@ var one = (function one($)
 	
 		}
 	
-		return (ViewBinder);
+		return (ModelBinder);
 	
-	})());
+	}());
 	
 	
 
@@ -7223,7 +7271,7 @@ var one = (function one($)
 	one.Settings = Settings;
 	one.Initializer = Initializer;
 	one.HtmlControl = HtmlControl;
-	one.ViewBinder = ViewBinder;
+	one.ModelBinder = ModelBinder;
 
 	one.type = $type;
 	one.string = $string;
