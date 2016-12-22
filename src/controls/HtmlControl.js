@@ -53,14 +53,40 @@ HtmlControl.prototype.element = function HtmlControl$element()
 	return this.$element;
 };
 
+HtmlControl.prototype.update = function HtmlControl$update(viewModel)
+{
+	if (viewModel)
+	{
+		this.setModel(viewModel);
+	}
+	else if (this.binder)
+	{
+		this.binder.update();
+	}
+};
+
+HtmlControl.prototype.model = function HtmlControl$model(value)
+{
+	if (value != undefined)
+		this.setModel(value);
+
+	return this.getModel();
+};
+
+HtmlControl.prototype.getModel = function HtmlControl$getModel()
+{
+	return this._model;
+};
+
 HtmlControl.prototype.setModel = function HtmlControl$setModel(viewModel)
 {
-	if (this.viewBinder == null)
+	this._model = viewModel;
+	if (this.binder == null)
 	{
-		this.viewBinder = new ModelBinder(this.$element);
+		this.binder = new ModelBinder(this.$element);
 	}
 
-	this.viewBinder.setModel(viewModel);
+	this.binder.setModel(viewModel);
 };
 
 /**

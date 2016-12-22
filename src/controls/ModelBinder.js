@@ -5,7 +5,8 @@ var ModelBinder = (function ()
 	 * Matches
 	 * @type {RegExp}
 	 */
-	var RX_EXPRESSION = /\$\{([^{}]+)}/g;
+	var RX_SIMPLE_EXPRESSION = /@\.([\w$.]+)/g;
+	var RX_EXPRESSION = /@\(([^()]+)\)/g;
 	var RX_LOOPSTART = /^loopstart_(\d+)$/;
 	var RX_LOOPEND = /^loopend$/;
 	var RX_EXPRSTART = /^expr:\$\{([^{}]+)}$/;
@@ -30,7 +31,7 @@ var ModelBinder = (function ()
 		this.loops = [];
 		this.element = null;
 		this.template = null;
-		this.model = null;
+		this._model = null;
 
 		if (element)
 			this.initialize(element);
@@ -55,8 +56,39 @@ var ModelBinder = (function ()
 
 	ModelBinder.prototype.setModel = function (model)
 	{
-		this.model = model;
-		bindNode.call(this, this.element, model);
+		this._model = model;
+		bindNode.call(this, this.element, this._model);
+	};
+
+	ModelBinder.prototype.model = function (value)
+	{
+		if (value != undefined)
+			this.setModel(value);
+
+		return this.getModel();
+	};
+
+	ModelBinder.prototype.getModel = function ()
+	{
+		return this._model;
+	};
+
+	ModelBinder.prototype.update = function (model)
+	{
+		if (model)
+			this.setModel(model);
+		else
+			bindNode.call(this, this.element, this._model);
+	};
+
+	ModelBinder.prototype.evaluateExpression = function (expression)
+	{
+		return evaluateExpression(expression, this._model);
+	};
+
+	ModelBinder.prototype.getValue = function (expression)
+	{
+		return getValue(expression, this._model);
 	};
 
 	ModelBinder.registerNodeBinder = function (nodeType, nodeBinderSpec)
@@ -114,30 +146,37 @@ var ModelBinder = (function ()
 	function prepareTextNode(node)
 	{
 		var text = node.nodeValue;
-		if (text.match(RX_EXPRESSION))
+		var expressions = [RX_SIMPLE_EXPRESSION, RX_EXPRESSION];
+
+		for (var i = 0; i < expressions.length; i++)
 		{
-			var start = 0;
-			var slices = [];
-			var keys = [];
-
-			// run greedy RX_EXPRESSION against the node text to find all the placeholders and their insert points
-			text.replace(RX_EXPRESSION, function (match, key, index)
+			var expression = expressions[i];
+			if (text.match(expression))
 			{
-				var slice = text.substring(start, index);
-				slices.push(slice);
-				keys.push(key);
-				start = index + match.length;
-			});
+				var start = 0;
+				var slices = [];
+				var keys = [];
 
-			// now replace the placeholders with comments
-			for (var i = 0; i < slices.length; i++)
-			{
-				node.parentNode.insertBefore(node.ownerDocument.createTextNode(slices[i]), node);
-				node.parentNode.insertBefore(node.ownerDocument.createComment("expr:${" + keys[i] + "}"), node);
-				node.parentNode.insertBefore(node.ownerDocument.createComment("exprend"), node);
+				// run greedy RX_EXPRESSION against the node text to find all the placeholders and their insert points
+				text.replace(expression, function (match, key, index)
+				{
+					var slice = text.substring(start, index);
+					slices.push(slice);
+					keys.push(key);
+					start = index + match.length;
+				});
+
+				// now replace the placeholders with comments
+				for (var i = 0; i < slices.length; i++)
+				{
+					node.parentNode.insertBefore(node.ownerDocument.createTextNode(slices[i]), node);
+					node.parentNode.insertBefore(node.ownerDocument.createComment("expr:${" + keys[i] + "}"), node);
+					node.parentNode.insertBefore(node.ownerDocument.createComment("exprend"), node);
+				}
+
+				node.parentNode.removeChild(node);
 			}
 
-			node.parentNode.removeChild(node);
 		}
 	}
 
@@ -216,10 +255,15 @@ var ModelBinder = (function ()
 
 	function bindString(template, model)
 	{
-		return template.replace(RX_EXPRESSION, function (match, expression)
-		{
-			return evaluateExpression(expression, model);
-		});
+		return template
+			.replace(RX_EXPRESSION, function (match, expression)
+			{
+				return evaluateExpression(expression, model);
+			})
+			.replace(RX_SIMPLE_EXPRESSION, function (match, expression)
+			{
+				return evaluateExpression(expression, model);
+			});
 	}
 
 	function selectNodeBinder(node, handlers)
@@ -333,7 +377,7 @@ var ModelBinder = (function ()
 		{
 			if (isValidModelProperty(parts[i], model))
 			{
-				var value = getValue(model, parts[i]);
+				var value = getValue(parts[i], model);
 				if (value == undefined || value == null)
 					value = "";
 
@@ -367,7 +411,7 @@ var ModelBinder = (function ()
 		return -1;
 	}
 
-	function getValue(model, key)
+	function getValue(key, model)
 	{
 		if (model[key])
 			return model[key];
@@ -474,7 +518,7 @@ var ModelBinder = (function ()
 		cleanupGeneratedContent(node);
 
 		var expression = node.nodeValue.match(RX_EXPRSTART)[1];
-		var value = getValue(model, expression);
+		var value = getValue(expression, model);
 		var textNode = node.ownerDocument.createTextNode(value);
 		node.parentNode.insertBefore(textNode, node.parentNode.childNodes[indexOf(node) + 1]);
 	}
@@ -485,7 +529,7 @@ var ModelBinder = (function ()
 
 		var loopIndex = node.nodeValue.match(RX_LOOPSTART)[1];
 		var loop = this.loops[loopIndex];
-		var collection = getValue(model, loop.expression);
+		var collection = getValue(loop.expression, model);
 		var following = node.parentNode.childNodes[indexOf(node) + 1];
 		var index = 0;
 		for (var key in collection)
