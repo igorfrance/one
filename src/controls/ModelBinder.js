@@ -446,6 +446,12 @@ var ModelBinder = (function ()
 		$(attributeParent(node)).toggle(show ? valid : !valid);
 	}
 
+	function bindingAttributeBinder(node, model)
+	{
+		var element = attributeParent(node);
+		element.innerHTML = evaluateExpression.call(this, node.nodeValue, model);
+	}
+
 	function defaultElementBinder(element, model)
 	{
 		reset(element);
@@ -510,6 +516,7 @@ var ModelBinder = (function ()
 
 	ModelBinder.registerNodeBinder(nodeType.ATTRIBUTE, { name: "data-attr-*", handler: defaultAttributeBinder });
 	ModelBinder.registerNodeBinder(nodeType.ATTRIBUTE, { name: "data-class", handler: classAttributeBinder});
+	ModelBinder.registerNodeBinder(nodeType.ATTRIBUTE, { name: "data-bind", handler: bindingAttributeBinder});
 	ModelBinder.registerNodeBinder(nodeType.ATTRIBUTE, { name: ["data-visible", "data-hidden"], handler: visibilityAttributeBinder});
 	ModelBinder.registerNodeBinder(nodeType.ELEMENT, { name: "*", handler: defaultElementBinder });
 	ModelBinder.registerNodeBinder(nodeType.COMMENT, { expression: RX_EXPRSTART, handler: expressionCommentBinder });
