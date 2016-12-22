@@ -8,7 +8,7 @@ log/
 *.resharper
 *.Resharper
 _target
-/node_modules
+node_modules
 /.idea
 *.iml
 /*.iws
