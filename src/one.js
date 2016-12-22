@@ -21,11 +21,6 @@ var one = (function one($)
 	/* @include core/CookieProperty.js  */
 	/* @include core/Settings.js  */
 
-	/* @include controls/ControlTypeInfo.js  */
-	/* @include controls/ControlRegistry.js  */
-	/* @include controls/HtmlControl.js  */
-	/* @include controls/ModelBinder.js  */
-
 	/* @include utils/Css.js  */
 	/* @include utils/Dom.js  */
 	/* @include utils/Log.js  */
@@ -36,10 +31,14 @@ var one = (function one($)
 	/* @include utils/Xml.js  */
 	/* @include utils/Constants.js  */
 	/* @include utils/Event.js  */
-	/* @include utils/FastClick.js  */
 	/* @include utils/Dragger.js  */
 	/* @include utils/Easing.js  */
-	/* @include utils/Image.js  */
+
+	/* @include controls/ControlTypeInfo.js  */
+	/* @include controls/ControlRegistry.js  */
+	/* @include controls/HtmlControl.js  */
+	/* @include controls/ModelBinder.js  */
+	/* @include controls/ximage/Image.js  */
 
 	one.Prototype = Prototype;
 	one.Property = Property;

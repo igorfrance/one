@@ -60,7 +60,7 @@ HtmlControl.prototype.setModel = function HtmlControl$setModel(viewModel)
 		this.viewBinder = new ModelBinder(this.$element);
 	}
 
-	this.viewBinder.apply(viewModel);
+	this.viewBinder.setModel(viewModel);
 };
 
 /**

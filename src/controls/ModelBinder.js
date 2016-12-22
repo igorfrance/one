@@ -13,7 +13,17 @@ var ModelBinder = (function ()
 
 	var initialized = [];
 
-	var ModelBinder = Dispatcher.extend(function (element)
+	//noinspection JSUnresolvedVariable
+	var nodeType = $xml.nodeType;
+
+	var nodeBinders = {
+		"1": [], // ELEMENT
+		"2": [], // ATTRIBUTE
+		"3": [], // TEXT
+		"8": [] // COMMENT
+	};
+
+	var ModelBinder = Dispatcher.extend(function ModelBinder(element)
 	{
 		this.construct();
 
@@ -46,18 +56,23 @@ var ModelBinder = (function ()
 	ModelBinder.prototype.setModel = function (model)
 	{
 		this.model = model;
-		bindElementNode.call(this, this.element, model);
+		bindNode.call(this, this.element, model);
+	};
+
+	ModelBinder.registerNodeBinder = function (nodeType, nodeBinderSpec)
+	{
+		nodeBinders[nodeType].push(nodeBinderSpec);
 	};
 
 	function prepareNode(node)
 	{
 		switch (node.nodeType)
 		{
-			case $xml.nodeType.ELEMENT:
+			case nodeType.ELEMENT:
 				prepareElementNode.call(this, node);
 				break;
 
-			case $xml.nodeType.TEXT:
+			case nodeType.TEXT:
 				prepareTextNode.call(this, node);
 				break;
 
@@ -130,11 +145,11 @@ var ModelBinder = (function ()
 	{
 		for (var i = 0; i < element.childNodes.length; i++)
 		{
-			if (element.childNodes[i].nodeType == $xml.nodeType.ELEMENT)
+			if (element.childNodes[i].nodeType == nodeType.ELEMENT)
 				attachEvents.call(this, element.childNodes[i]);
 		}
 
-		for (var i = 0; i < element.attributes.length; i++)
+		for (i = 0; i < element.attributes.length; i++)
 		{
 			var attr = element.attributes[i];
 			if (attr.name.indexOf("data-emit-") != 0)
@@ -159,20 +174,98 @@ var ModelBinder = (function ()
 	{
 		this.registerEvent(emitEventName);
 
-		var self = this;
 		var $element = $(element);
-		$element.off(eventName).on(eventName, function (e)
+		$element.data("emit-" + eventName, emitEventName);
+		$element.data("emit-params", eventParams);
+		$element.off(eventName).on(eventName, $.proxy(viewEventHandler, this));
+	}
+
+	function viewEventHandler(e)
+	{
+		var $element = $(e.target);
+		var emitEventName = $element.data("emit-" + e.type);
+		var eventParams = $element.data("emit-params");
+		var params = [];
+
+		if (eventParams)
 		{
-			var params = eventParams.map(function (param)
+			var self = this;
+			params = eventParams.map(function (param)
 			{
 				return evaluateExpression(param, self.model);
 			});
+		}
 
-			var event = new $evt.Event(self, emitEventName, params);
-			event.originalEvent = e;
-			self.fire(emitEventName, event);
-			console.log("Firing {0} from event {1} with params: {2}".format(emitEventName, e.type, params));
+		var event = new $evt.Event(this, emitEventName, params);
+		event.originalEvent = e;
+		this.fire(emitEventName, event);
+		console.log("Firing {0} from event {1} with params: {2}".format(emitEventName, e.type, params));
+
+	}
+
+	function bindNode(node, model)
+	{
+		var type = node.nodeType;
+		if (!nodeBinders[type])
+			return;
+
+		var nodeBinder = selectNodeBinder(node, nodeBinders[type]);
+		if (nodeBinder)
+			nodeBinder.call(this, node, model);
+	}
+
+	function bindString(template, model)
+	{
+		return template.replace(RX_EXPRESSION, function (match, expression)
+		{
+			return evaluateExpression(expression, model);
 		});
+	}
+
+	function selectNodeBinder(node, handlers)
+	{
+		for (var i = 0; i < handlers.length; i++)
+		{
+			if (handlers[i].expression)
+			{
+				var expressions = handlers[i].expression;
+				expressions = $type.isArray(expressions) ? expressions : [expressions];
+
+				for (var j = 0; j < expressions.length; j++)
+				{
+					var expr = expressions[j];
+					if (expr && node.nodeValue.match(expr))
+						return handlers[i].handler;
+				}
+			}
+			else
+			{
+				var match = false;
+				var nodeName = node.nodeName;
+				var names = handlers[i].name;
+				names = $type.isArray(names) ? names : [names];
+
+				for (j = 0; j < names.length; j++)
+				{
+					var name = names[j];
+					if (name.indexOf("*") == name.length - 1) // data-attr-*
+						match = node.nodeName.indexOf(name.substring(0, name.indexOf("*"))) == 0;
+
+					else if (name.indexOf("*") == 0) // *-attr
+						match = nodeName.substring(nodeName.length - (name.length - 1), nodeName.length) == name.substring(1);
+
+					else
+						match = handlers[i].name == node.nodeName;
+
+					if (match)
+						return handlers[i].handler;
+				}
+
+			}
+		}
+
+		if (handlers["*"])
+			return handlers["*"].handler;
 	}
 
 	function reset(element)
@@ -181,7 +274,7 @@ var ModelBinder = (function ()
 		for (var i = 0; i < element.childNodes.length; i++)
 		{
 			var node = element.childNodes[i];
-			if (node.nodeType == $xml.nodeType.COMMENT)
+			if (node.nodeType == nodeType.COMMENT)
 			{
 				if (node.nodeValue.match(RX_LOOPSTART) || node.nodeValue.match(RX_EXPRSTART))
 					comments.push(node);
@@ -204,110 +297,6 @@ var ModelBinder = (function ()
 		}
 	}
 
-	function bindElementNode(element, model)
-	{
-		reset(element);
-
-		for (var i = 0; i < element.attributes.length; i++)
-		{
-			var attr = element.attributes[i];
-
-			switch (attr.name)
-			{
-				case "data-class":
-					bindClasses(element, model);
-					break;
-
-				case "data-visible":
-				case "data-hidden":
-					bindVisibility(element, model, attr.name);
-					break;
-
-				default:
-					if (attr.name.indexOf("data-attr-") == 0)
-					{
-						var attrName = attr.name.substring(10);
-						if (attr.value.match(RX_EXPRESSION))
-						{
-							var processed = bindString(attr.value, model);
-							element.setAttribute(attrName, processed);
-						}
-					}
-			}
-		}
-
-		var nodes = [];
-		for (var i = 0; i < element.childNodes.length; i++)
-			nodes.push(element.childNodes[i]);
-
-		for (var i = 0; i < nodes.length; i++)
-		{
-			var node = nodes[i];
-			if (node.nodeType == $xml.nodeType.COMMENT)
-			{
-				bindCommentNode.call(this, node, model);
-			}
-			else if (node.nodeType == $xml.nodeType.ELEMENT)
-			{
-				bindElementNode.call(this, node, model);
-			}
-		}
-	}
-
-	function bindCommentNode(node, model)
-	{
-		if (node.nodeValue.match(RX_LOOPSTART))
-			bindLoopCommentNode.call(this, node, model);
-
-		else if (node.nodeValue.match(RX_EXPRSTART))
-			bindTextCommentNode.call(this, node, model);
-	}
-
-	function bindLoopCommentNode(node, model)
-	{
-		cleanupGeneratedContent(node);
-
-		var loopIndex = node.nodeValue.match(RX_LOOPSTART)[1];
-		var loop = this.loops[loopIndex];
-		var collection = getValue(model, loop.expression);
-		var following = node.parentNode.childNodes[indexOf(node) + 1];
-		var index = 0;
-		for (var key in collection)
-		{
-			if (!collection.hasOwnProperty(key))
-				continue;
-
-			var instance = loop.element.cloneNode(true);
-			var iterationModel = $.extend({}, model);
-			if ($type.isObject(collection[key]))
-				iterationModel = $.extend(iterationModel, collection[key]);
-
-			iterationModel = $.extend(iterationModel,
-			{
-				_: collection[key],
-				$index: index,
-				$current: collection[key],
-				$key: key
-			});
-
-			bindElementNode.call(this, instance, iterationModel);
-			attachEvents.call(this, instance);
-
-			node.parentNode.insertBefore(instance, following);
-			index += 1;
-		}
-	}
-
-	function bindTextCommentNode(node, model)
-	{
-		cleanupGeneratedContent(node);
-
-		var expression = node.nodeValue.match(RX_EXPRSTART)[1];
-		var value = getValue(model, expression);
-		var textNode = node.ownerDocument.createTextNode(value);
-		node.parentNode.insertBefore(textNode, node.parentNode.childNodes[indexOf(node) + 1]);
-	}
-
 	function cleanupGeneratedContent(commentStartNode)
 	{
 		var endExpression = commentStartNode.nodeValue.match(RX_LOOPSTART) ? RX_LOOPEND : RX_EXPREND;
@@ -326,7 +315,7 @@ var ModelBinder = (function ()
 
 			if (capturing)
 			{
-				if (node.nodeType == $xml.nodeType.COMMENT && node.nodeValue.match(endExpression))
+				if (node.nodeType == nodeType.COMMENT && node.nodeValue.match(endExpression))
 					break;
 
 				elements.push(node);
@@ -335,52 +324,6 @@ var ModelBinder = (function ()
 
 		for (var i = 0; i < elements.length; i++)
 			parent.removeChild(elements[i]);
-	}
-
-	function bindClasses(element, model)
-	{
-		var classSpec = element.getAttribute("data-class");
-		var classObj = {};
-		try
-		{
-			classObj = JSON.parse(classSpec);
-		}
-		catch(error)
-		{
-			console.debug(classSpec);
-			console.error(error);
-			return;
-		}
-
-		var $el = $(element);
-		for (var className in classObj)
-		{
-			var expressionResult = evaluateExpression(classObj[className], model);
-			var classOn = (expressionResult == true || expressionResult == "true");
-			$el.toggleClass(className, classOn);
-		}
-	}
-
-	function bindVisibility(element, model, attrName)
-	{
-		var expressionText = element.getAttribute(attrName);
-		var expressionResult = evaluateExpression(bindString(expressionText, model), model);
-
-		var valid = (expressionResult == true || expressionResult == "true");
-		var show = attrName == "data-visible";
-
-		if (show)
-			$(element).toggle(valid);
-		else
-			$(element).toggle(!valid);
-	}
-
-	function bindString(template, model)
-	{
-		return template.replace(RX_EXPRESSION, function (match, expression)
-		{
-			return evaluateExpression(expression, model);
-		});
 	}
 
 	function evaluateExpression(expression, model)
@@ -451,10 +394,126 @@ var ModelBinder = (function ()
 		return model[key1] != undefined;
 	}
 
-	function onViewEvent()
+	function attributeParent(attr)
 	{
-
+		return attr.parentNode || attr.ownerElement;
 	}
+
+	function defaultAttributeBinder(attr, model)
+	{
+		var attrName = attr.name.substring(10);
+		if (attr.value.match(RX_EXPRESSION))
+		{
+			var processed = bindString(attr.value, model);
+			attributeParent(attr).setAttribute(attrName, processed);
+		}
+	}
+
+	function classAttributeBinder(node, model)
+	{
+		var element = attributeParent(node);
+		var classSpec = element.getAttribute("data-class");
+		var classObj = {};
+		try
+		{
+			classObj = JSON.parse(classSpec);
+		}
+		catch(error)
+		{
+			console.debug(classSpec);
+			console.error(error);
+			return;
+		}
+
+		var $el = $(element);
+		for (var className in classObj)
+		{
+			var expressionResult = evaluateExpression(classObj[className], model);
+			var classOn = (expressionResult == true || expressionResult == "true");
+			$el.toggleClass(className, classOn);
+		}
+	}
+
+	function visibilityAttributeBinder(node, model)
+	{
+		var attrName = node.nodeName;
+		var expressionText = element.getAttribute(attrName);
+		var expressionResult = evaluateExpression(bindString(expressionText, model), model);
+
+		var valid = (expressionResult == true || expressionResult == "true");
+		var show = attrName == "data-visible";
+
+		$(attributeParent(node)).toggle(show ? valid : !valid);
+	}
+
+	function defaultElementBinder(element, model)
+	{
+		reset(element);
+
+		var i;
+		var nodes = [];
+
+		for (i = 0; i < element.attributes.length; i++)
+			bindNode.call(this, element.attributes[i], model);
+
+		for (i = 0; i < element.childNodes.length; i++)
+			nodes.push(element.childNodes[i]);
+
+		for (i = 0; i < nodes.length; i++)
+			bindNode.call(this, nodes[i], model);
+	}
+
+	function expressionCommentBinder(node, model)
+	{
+		cleanupGeneratedContent(node);
+
+		var expression = node.nodeValue.match(RX_EXPRSTART)[1];
+		var value = getValue(model, expression);
+		var textNode = node.ownerDocument.createTextNode(value);
+		node.parentNode.insertBefore(textNode, node.parentNode.childNodes[indexOf(node) + 1]);
+	}
+
+	function loopCommentBinder(node, model)
+	{
+		cleanupGeneratedContent(node);
+
+		var loopIndex = node.nodeValue.match(RX_LOOPSTART)[1];
+		var loop = this.loops[loopIndex];
+		var collection = getValue(model, loop.expression);
+		var following = node.parentNode.childNodes[indexOf(node) + 1];
+		var index = 0;
+		for (var key in collection)
+		{
+			if (!collection.hasOwnProperty(key))
+				continue;
+
+			var instance = loop.element.cloneNode(true);
+			var iterationModel = $.extend({}, model);
+			if ($type.isObject(collection[key]))
+				iterationModel = $.extend(iterationModel, collection[key]);
+
+			iterationModel = $.extend(iterationModel,
+			{
+				_: collection[key],
+				$index: index,
+				$current: collection[key],
+				$key: key
+			});
+
+			bindNode.call(this, instance, iterationModel);
+			attachEvents.call(this, instance);
+
+			node.parentNode.insertBefore(instance, following);
+			index += 1;
+		}
+	}
+
+	ModelBinder.registerNodeBinder(nodeType.ATTRIBUTE, { name: "data-attr-*", handler: defaultAttributeBinder });
+	ModelBinder.registerNodeBinder(nodeType.ATTRIBUTE, { name: "data-class", handler: classAttributeBinder});
+	ModelBinder.registerNodeBinder(nodeType.ATTRIBUTE, { name: ["data-visible", "data-hidden"], handler: visibilityAttributeBinder});
+	ModelBinder.registerNodeBinder(nodeType.ELEMENT, { name: "*", handler: defaultElementBinder });
+	ModelBinder.registerNodeBinder(nodeType.COMMENT, { expression: RX_EXPRSTART, handler: expressionCommentBinder });
+	ModelBinder.registerNodeBinder(nodeType.COMMENT, { expression: RX_LOOPSTART, handler: loopCommentBinder });
 
 	return (ModelBinder);
 
