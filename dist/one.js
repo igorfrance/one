@@ -1964,1100 +1964,6 @@ var one = (function one($)
 	
 
 	/**
-	 * Provides information about a registered control.
-	 * @param {Function} type The function that implements the control.
-	 * @param {Object} options Optional contructor options to use when creating elements.
-	 * @param {String} expression The css expression string for elements that should be
-	 * assigned the control.
-	 */
-	var ControlTypeInfo = function ControlTypeInfo(type, options, expression)
-	{
-		//// Initialize the control
-		type.create = type.create || createInstance;
-		type.createElement = type.createElement || createElement;
-		type.get = type.get || getInstance;
-		type.register = type.register || registerConstructor;
-		type.dispose = type.dispose || $function.EMPTY;
-		type.start = type.start || $function.EMPTY;
-		type.instances = [];
-		type.options = $.extend({}, options);
-		type.registeredConstructors = {};
-		type.registerInstance = registerInstance;
-	
-		var info = this;
-		info.type = type;
-		info.defaultConstructor = type.Control || type;
-		info.typeName = one.func.getName(type);
-		info.expression = expression || type.expression;
-		info.async = type.async === true;
-		info.getInstance = getInstance;
-		info.createInstance = createInstance;
-	
-		/**
-		 * Checks whether the specified function is either the default constructor or one of the registered constructors of this type.
-		 * @param {Function} typeFunction The function to check.
-		 * @returns {Boolean} <c>true</c> if the specified function is either the default constructor or one of the
-		 * registered constructors of this type; otherwise <c>false</c>.
-		 */
-		this.checkType = function (typeFunction)
-		{
-			if (info.type == typeFunction)
-				return true;
-	
-			if (info.defaultConstructor == typeFunction)
-				return true;
-	
-			for (var expression in type.registeredConstructors)
-			{
-				if (type.registeredConstructors[expression] == typeFunction)
-					return true;
-			}
-	
-			return false;
-		};
-	
-		/**
-		 * Calls static redraw method of the registered control, if the control implements it.
-		 */
-		this.redraw = function ()
-		{
-			if ($type.isFunction(type.redraw))
-			{
-				type.redraw();
-			}
-		};
-	
-		/**
-		 * Sets up the control associated with this instance.
-		 * @param {Function} onTypeInitialized The callback function for asynchronous initialization.
-		 */
-		this.setup = function (onTypeInitialized)
-		{
-			if (type.setup && type.async)
-			{
-				type.setup(onTypeInitialized);
-			}
-			else if (type.setup)
-			{
-				type.setup();
-				onTypeInitialized();
-			}
-			else
-			{
-				onTypeInitialized();
-			}
-		};
-	
-		this.start = function start()
-		{
-			type.start();
-		};
-	
-		/**
-		 * Call the <code>dispose</code> method of the associated control.
-		 */
-		this.dispose = function()
-		{
-			if (type.dispose)
-			{
-				type.dispose();
-			}
-		};
-	
-		/**
-		 * Creates a new HTML element for use with the registered control.
-		 * @returns {HTMLElement} A new HTML element for use with the registered control.
-		 */
-		function createElement()
-		{
-			var result = document.createElement("div");
-			result.setAttribute("id", one.dom.uniqueID(result));
-			if (String(type.expression).trim().replace(/\./g, " ").match(/([\w\- ]+)/))
-				result.setAttribute("className", RegExp.$1);
-	
-			return result;
-		}
-	
-		/**
-		 * Creates a new control.
-		 * @example Create a new button
-		 * Button.create($("button.big"));
-		 * @example Create a new tab control
-		 * TabControl.create(myElement);
-		 * @param {HTMLElement} element The element that represents the control to create. Optional.
-		 * @param {Object} settings The object that holds the settings for the control to create. Optional.
-		 * @return {Object} The control that was created.
-		 */
-		function createInstance(element, settings)
-		{
-			var _settings = $.extend({}, type.options, settings);
-			if (element == null)
-			{
-				if ($type.isFunction(this.createElement))
-				{
-					element = this.createElement(_settings);
-				}
-				else
-				{
-					throw Error($string.format(
-						"No element has been provided and the control '{0}' doesn't have 'createElement' method, " +
-						"therefore a new element can't be created", one.func.getName(this)));
-				}
-			}
-	
-			var control = getInstance(element);
-			if (control == null)
-			{
-				var ctor = getConstructor(element);
-				control = new ctor(element, _settings);
-				if ($type.isFunction(control.init))
-					control.init();
-	
-				registerInstance(control);
-			}
-	
-			return control;
-		}
-	
-		function registerInstance(control)
-		{
-			if (!$type.instanceOf(control, HtmlControl))
-				return;
-	
-			control.$element.attr("id", $dom.uniqueID(control.$element));
-	
-			if (!type.instances.contains(control))
-				type.instances.push(control);
-		}
-	
-		/**
-		 * Gets the contructor function registered for the specified <c>element</c>.
-		 * @param {HTMLElement|jQuery} element Either the HTML element of jQuery selection of it.
-		 * @returns {Function} The function registered and the control constructor for the specified <c>element</c>.
-		 */
-		function getConstructor(element)
-		{
-			var constructor = info.defaultConstructor;
-			var $element = $(element);
-	
-			for (var expression in type.registeredConstructors)
-			{
-				if ($element.is(expression))
-				{
-					constructor = type.registeredConstructors[expression];
-					break;
-				}
-			}
-	
-			return constructor;
-		}
-	
-		/**
-		 * Gets the control instance associated with the specified <c>element</c>.
-		 * @param {String|Element} element Either the HTML element or ID of the element for
-		 * which to get the control instance.
-		 * @returns {HtmlControl} The control instance associated with the specified <c>element</c>.
-		 */
-		function getInstance(element)
-		{
-			if (element == null)
-				return null;
-	
-			if (element.jquery)
-				element = element[0];
-	
-			if ($type.isString(element))
-				element = $(element)[0];
-	
-			if (element == null)
-				return null;
-	
-			var checkString = $type.isString(element);
-			var checkElement = $type.isElement(element);
-	
-			for (var i = 0; i < type.instances.length; i++)
-			{
-				var instance = type.instances[i];
-				if (checkElement && instance.element()[0] == element)
-					return instance;
-	
-				if (checkString && instance.id() == element)
-					return instance;
-			}
-	
-			return null;
-		}
-	
-		/**
-		 * Registers a constructor to use (instead of the default constructor) when
-		 * creating control instances for elements that match the specified css expression.
-		 *
-		 * @example
-		 * Button.registerConstructor(MyConstructor, "#mybutton");
-		 * @example
-		 * Button.registerConstructor(RedButton, "div.buttons .button.red");
-		 * @param {String} expression The css expression that specifies for which elements
-		 * this constructor applies.
-		 * @param {Function} constructor The constructor function to use.
-		 */
-		function registerConstructor(expression, constructor)
-		{
-			if (!$type.isString(expression) && !$type.isFunction(constructor))
-				return $log.warn("Arguments expression:String and constructor:Function both need to be used");
-	
-			type.registeredConstructors[expression] = constructor;
-			return null;
-		}
-	};
-	
-	/**
-	 * Implements a global control registry.
-	 *
-	 * The control registry provides a centralized and streamlined way for controls to be discovered, initialized
-	 * and made available to the whole window.
-	 *
-	 * When a control is registered, it provides information about how it needs to be initialized; if the control need to
-	 * load resources asynchronously, it will wait on it to complete before signaling readiness.
-	 *
-	 * A registered control will be appended several methods that provide it with functionality to create get and create
-	 * instances, as well as to register custom constructors for specific elements.
-	 */
-	var ControlRegistry = Dispatcher.extend(function ControlRegistry()
-	{
-		this.construct();
-	
-		this.registerEvent("ready");
-		this.registerEvent("update");
-	
-		this.started = false;
-	
-		var types = [];
-		var expressions = [];
-	
-		var depth = 0;
-	
-		/**
-		 * Calls static redraw method on all control types that implement it.
-		 *
-		 * This provides a single point for redraw synchronization when arbitrary code element change the screen layout in
-		 * ways that require controls to be redrawn.
-		 */
-		this.redraw = function redraw()
-		{
-			for (var i = 0; i < types.length; i++)
-			{
-				types[i].redraw();
-			}
-		};
-	
-		/**
-		 * Registers a control.
-		 * @param {String} expression The css expression string for elements that should be
-		 * assigned the control.
-		 * @param {Object} options Optional contructor options to use when creating elements.
-		 * @param {Object} control The control factory object.
-		 */
-		this.register = function register(expression, control, options)
-		{
-			var _expression, _control, _options;
-			if (arguments.length == 1)
-			{
-				_control = arguments[0] || {};
-				_options = {};
-				_expression = _control.expression;
-			}
-			if (arguments.length == 2)
-			{
-				_expression = arguments[0];
-				_control = arguments[1] || {};
-				_options = {};
-			}
-			if (arguments.length == 3)
-			{
-				_expression = arguments[0];
-				_control = arguments[1] || {};
-				_options = arguments[2] || {};
-			}
-	
-			if (_expression)
-				expressions.push(_expression);
-	
-			var typeInfo = new ControlTypeInfo(_control, _options, _expression);
-			types.push(typeInfo);
-	
-			typeInfo.name = $type.isString(_control.NAME)
-				? _control.NAME
-				: $type.isFunction(_control)
-					? one.func.getName(_control)
-					: one.func.getName(_control.constructor);
-	
-			$log.info("Registered control {0}", typeInfo.name);
-	
-			return _control;
-		};
-	
-		/**
-		 * Searches through the registered controls and find an instance that matches the specification.
-		 * @param {Object} element Either the id of an HTML element or the HTML element itself.
-		 * @param {Object} type Either the class name associated with a control type, the name of the type or
-		 * the control type itself.
-		 * @returns {Control} The control associated with the specified element, and optionally $type.
-		 */
-		this.get = function get(element, type)
-		{
-			if (element == null)
-				return null;
-	
-			if (element.jquery)
-				element = element[0];
-	
-			if ($type.isString(element))
-				element = $(element)[0];
-	
-			if (element == null)
-				return null;
-	
-			var result = null;
-			for (var i = 0; i < types.length; i++)
-			{
-				var typeInfo = types[i];
-				if (type != null)
-				{
-					if (typeInfo.checkType(type) || typeInfo.typeName == type || typeInfo.expression.indexOf(type) != -1)
-					{
-						result = typeInfo.getInstance(element);
-						break;
-					}
-				}
-				else
-				{
-					// if no type has been specified, return the first matching control.
-					result = typeInfo.getInstance(element);
-					if (result != null)
-					{
-						break;
-					}
-				}
-			}
-	
-			return result;
-		};
-	
-		/**
-		 * Sets up all registered controls.
-		 * @param {Function} onSetupReady The function to call when the setup completes.
-		 */
-		this.setup = function setup(onSetupReady)
-		{
-			if (types.length == 0)
-			{
-				if ($type.isFunction(onSetupReady))
-					onSetupReady();
-	
-				return;
-			}
-	
-			var self = this;
-			var typesReady = 0;
-			for (var i = 0; i < types.length; i++)
-			{
-				var typeInfo = types[i];
-				typeInfo.setup(function onTypeInitialized()
-				{
-					if (++typesReady == types.length)
-					{
-						self.update();
-						if ($type.isFunction(onSetupReady))
-							onSetupReady();
-					}
-				});
-			}
-		};
-	
-		/**
-		 * Call <code>dispose</code> method on all registered controls.
-		 */
-		this.dispose = function dispose()
-		{
-			for (var i = 0; i < types.length; i++)
-				types[i].dispose();
-		};
-	
-		/**
-		 * Provides a method that can be called to signal that the outer initialization is
-		 * completed and that all controls can now be started.
-		 */
-		this.start = function start()
-		{
-			for (var i = 0; i < types.length; i++)
-				types[i].start();
-	
-			this.fireEvent("ready");
-			this.started = true;
-		};
-	
-		/**
-		 * Discovers and initializes registered controls within the specified <c>parent</c>.
-		 *
-		 * @param {Object} parent The parent element in which to discover and update controls. If omitted it defaults to
-		 * whole document.
-		 */
-		this.update = function update(parent)
-		{
-			depth++;
-	
-			if (depth < 10)
-			{
-				var elements = $(expressions.join(", "), parent || document);
-	
-				if (elements.length > 0)
-				{
-					for (var i = 0; i < types.length; i++)
-					{
-						var count = 0;
-						var typeInfo = types[i];
-						var matches = elements.filter(typeInfo.expression);
-	
-						for (var j = 0; j < matches.length; j++)
-						{
-							var control = typeInfo.getInstance(matches[j]);
-							if (control == null)
-							{
-								typeInfo.createInstance(matches[j], null, depth);
-								count++;
-							}
-						}
-	
-						if (count != 0)
-							console.log("Created {0} instance(s) of {1}".format(count, typeInfo.name));
-					}
-				}
-			}
-			else
-			{
-				one.log.warn("An attempt was made to recurse into ControlRegistry.update deeper than 10 levels. Check the code for infinite loops");
-			}
-	
-			depth--;
-	
-			if (depth == 0)
-			{
-				this.fireEvent("update");
-			}
-		};
-	
-	});
-	
-	/**
-	 * Provides a base class for HTML controls.
-	 * @param {HTMLElement} element The HTML element that this control wraps.
-	 * @arguments {String} [1-n] Any events that this control dispatches.
-	 * @class
-	 * @constructor
-	 * @extends {Dispatcher}
-	 */
-	var HtmlControl = Dispatcher.extend(function HtmlControl(element)
-	{
-		this.construct($array.fromArguments(arguments, 1));
-	
-		/**
-		 * @type {jQuery}
-		 */
-		this.$element = $(element);
-	
-		/**
-		 * @type {Settings}
-		 */
-		this.settings = new Settings();
-	});
-	
-	/**
-	 * Gets or sets the id of the element that this control uses.
-	 * @param {String} [id] The new id top to set on the element.
-	 * @returns {String} The current id of the element.
-	 */
-	HtmlControl.prototype.id = function HtmlControl$id(id)
-	{
-		if ($type.isString(id))
-			this.$element.attr("id", id);
-	
-		return this.$element.attr("id");
-	};
-	
-	HtmlControl.prototype.destroy = function HtmlControl$destroy()
-	{
-		this.base("destroy");
-		for (var prop in this)
-		{
-			if (prop.indexOf("$") == 0)
-				delete this[prop];
-		}
-	};
-	
-	/**
-	 * Gets the HTML element that this control uses.
-	 * @returns {jQuery} The element that this control uses.
-	 */
-	HtmlControl.prototype.element = function HtmlControl$element()
-	{
-		return this.$element;
-	};
-	
-	HtmlControl.prototype.setModel = function HtmlControl$setModel(viewModel)
-	{
-		if (this.viewBinder == null)
-		{
-			this.viewBinder = new ModelBinder(this.$element);
-		}
-	
-		this.viewBinder.apply(viewModel);
-	};
-	
-	/**
-	 * Gets a string that represents this element.
-	 * @returns {String} A string that represents this element.
-	 */
-	HtmlControl.prototype.toString = function HtmlControl$toString()
-	{
-		var name = one.func.getName(this.constructor);
-		if (this.$element.length == 0)
-			return $string.format("{0}(null)", name);
-	
-		var attrId = this.id();
-		var attrClass = this.$element.attr("class");
-		var tagName = String(this.$element.prop("tagName")).toLowerCase();
-		return $string.format("{0}(\"{1}{2}{3}\")", name, tagName,
-			attrClass ? "." + attrClass.replace(/\s+/, ".") : $string.EMPTY,
-			attrId ? "#" + attrId : $string.EMPTY);
-	};
-	
-	HtmlControl.prototype.get = function HtmlControl$set(propName)
-	{
-		if (this.settings === undefined)
-			return console.warn("Can't get '{0}' because the current control doesn't have an associated settings object.".format(propName));
-	
-		return this.settings.get(propName);
-	};
-	
-	HtmlControl.prototype.set = function HtmlControl$set(propName, propValue)
-	{
-		if (this.settings === undefined)
-			return console.warn("Can't set '{0}' to '{1}' because the current control doesn't have an associated settings object.".format(propName, propValue));
-	
-		this.settings.set(propName, propValue);
-		return this.settings.get(propName);
-	};
-	
-	HtmlControl.PROPS =
-	{
-		VERTICAL:
-		{
-			scrollSize: "scrollHeight",
-			scrollPos: "scrollTop",
-			offsetPos: "offsetTop",
-			size: "height",
-			outerSize: "outerHeight",
-			position: "top",
-			positionAlt: "bottom",
-			scrollPadding: "paddingRight",
-			scrollPaddingSize: "width",
-			minPos: "minY",
-			maxPos: "maxY",
-			paddingStart: "paddingTop",
-			paddingEnd: "paddingBottom",
-			marginStart: "marginTop",
-			eventPos: "eventY",
-			eventOffsetPos: "offsetY",
-			startEventPos: "startEventY"
-		},
-	
-		HORIZONTAL:
-		{
-			scrollSize: "scrollWidth",
-			scrollPos: "scrollLeft",
-			offsetPos: "offsetLeft",
-			size: "width",
-			outerSize: "outerWidth",
-			position: "left",
-			positionAlt: "right",
-			scrollPadding: "paddingBottom",
-			scrollPaddingSize: "height",
-			minPos: "minX",
-			maxPos: "maxX",
-			paddingStart: "paddingLeft",
-			paddingEnd: "paddingRight",
-			marginStart: "marginLeft",
-			eventPos: "eventX",
-			eventOffsetPos: "offsetX",
-			startEventPos: "startEventX"
-		}
-	};
-	
-	var ModelBinder = (function ()
-	{
-		/**
-		 * Placeholder pattern.
-		 * Matches
-		 * @type {RegExp}
-		 */
-		var RX_EXPRESSION = /\$\{([^{}]+)}/g;
-		var RX_LOOPSTART = /^loopstart_(\d+)$/;
-		var RX_LOOPEND = /^loopend$/;
-		var RX_EXPRSTART = /^expr:\$\{([^{}]+)}$/;
-		var RX_EXPREND = /^exprend$/;
-	
-		var initialized = [];
-	
-		var ModelBinder = Dispatcher.extend(function (element)
-		{
-			this.construct();
-	
-			this.loops = [];
-			this.element = null;
-			this.template = null;
-			this.model = null;
-	
-			if (element)
-				this.initialize(element);
-		});
-	
-		ModelBinder.prototype.initialize = function (element)
-		{
-			this.loops = [];
-			this.element = $(element)[0];
-	
-			if (initialized.indexOf(this.element) == -1)
-			{
-				prepareNode.call(this, this.element);
-				this.element.loops = this.loops;
-				initialized.push(this.element);
-			}
-			else
-			{
-				this.loops = this.element.loops;
-			}
-		};
-	
-		ModelBinder.prototype.setModel = function (model)
-		{
-			this.model = model;
-			bindElementNode.call(this, this.element, model);
-		};
-	
-		function prepareNode(node)
-		{
-			switch (node.nodeType)
-			{
-				case $xml.nodeType.ELEMENT:
-					prepareElementNode.call(this, node);
-					break;
-	
-				case $xml.nodeType.TEXT:
-					prepareTextNode.call(this, node);
-					break;
-	
-				default:
-					return;
-			}
-		}
-	
-		function prepareElementNode(node)
-		{
-			for (var i = 0; i < node.childNodes.length; i++)
-					prepareNode.call(this, node.childNodes[i]);
-	
-			var foreach = node.getAttribute("data-foreach");
-			var visible = node.getAttribute("data-visible");
-			var hidden = node.getAttribute("data-hidden");
-	
-			if (foreach)
-			{
-				var index = this.loops.length;
-				var commentStart = node.ownerDocument.createComment("loopstart_" + index);
-				var commentEnd = node.ownerDocument.createComment("loopend");
-				node.parentNode.insertBefore(commentStart, node);
-				node.parentNode.insertBefore(commentEnd, node);
-				node.parentNode.removeChild(node);
-	
-				node.removeAttribute("data-foreach");
-				this.loops.push({ element: node, expression: foreach });
-			}
-			else
-			{
-				if (visible)
-					$(node).hide();
-	
-				attachEvents.call(this, node);
-			}
-		}
-	
-		function prepareTextNode(node)
-		{
-			var text = node.nodeValue;
-			if (text.match(RX_EXPRESSION))
-			{
-				var start = 0;
-				var slices = [];
-				var keys = [];
-	
-				// run greedy RX_EXPRESSION against the node text to find all the placeholders and their insert points
-				text.replace(RX_EXPRESSION, function (match, key, index)
-				{
-					var slice = text.substring(start, index);
-					slices.push(slice);
-					keys.push(key);
-					start = index + match.length;
-				});
-	
-				// now replace the placeholders with comments
-				for (var i = 0; i < slices.length; i++)
-				{
-					node.parentNode.insertBefore(node.ownerDocument.createTextNode(slices[i]), node);
-					node.parentNode.insertBefore(node.ownerDocument.createComment("expr:${" + keys[i] + "}"), node);
-					node.parentNode.insertBefore(node.ownerDocument.createComment("exprend"), node);
-				}
-	
-				node.parentNode.removeChild(node);
-			}
-		}
-	
-		function attachEvents(element)
-		{
-			for (var i = 0; i < element.childNodes.length; i++)
-			{
-				if (element.childNodes[i].nodeType == $xml.nodeType.ELEMENT)
-					attachEvents.call(this, element.childNodes[i]);
-			}
-	
-			for (var i = 0; i < element.attributes.length; i++)
-			{
-				var attr = element.attributes[i];
-				if (attr.name.indexOf("data-emit-") != 0)
-					continue;
-	
-				var params = [];
-				var sourceEventName = attr.name.replace("data-emit-", "");
-				var targetEventName = attr.value.replace(/\((.*)\)/, function ($0, $1)
-				{
-					if ($1)
-					{
-						params = $1.replace(/\s*,\s*/g, ",").split(",");
-						return "";
-					}
-				});
-	
-				attachEvent.call(this, element, sourceEventName, targetEventName, params);
-			}
-		}
-	
-		function attachEvent(element, eventName, emitEventName, eventParams)
-		{
-			this.registerEvent(emitEventName);
-	
-			var self = this;
-			var $element = $(element);
-			$element.off(eventName).on(eventName, function (e)
-			{
-				var params = eventParams.map(function (param)
-				{
-					return evaluateExpression(param, self.model);
-				});
-	
-				var event = new $evt.Event(self, emitEventName, params);
-				event.originalEvent = e;
-				self.fire(emitEventName, event);
-				console.log("Firing {0} from event {1} with params: {2}".format(emitEventName, e.type, params));
-			});
-		}
-	
-		function reset(element)
-		{
-			var comments = [];
-			for (var i = 0; i < element.childNodes.length; i++)
-			{
-				var node = element.childNodes[i];
-				if (node.nodeType == $xml.nodeType.COMMENT)
-				{
-					if (node.nodeValue.match(RX_LOOPSTART) || node.nodeValue.match(RX_EXPRSTART))
-						comments.push(node);
-				}
-			}
-	
-			for (var j = 0; j < comments.length; j++)
-			{
-				cleanupGeneratedContent(comments[j]);
-			}
-	
-			for (var k = 0; k < element.attributes.length; k++)
-			{
-				var attr = element.attributes[k];
-				if (attr.name.indexOf("data-attr-") == 0)
-				{
-					var attrName = attr.name.substring(10);
-					element.removeAttribute(attrName);
-				}
-			}
-		}
-	
-		function bindElementNode(element, model)
-		{
-			reset(element);
-	
-			for (var i = 0; i < element.attributes.length; i++)
-			{
-				var attr = element.attributes[i];
-	
-				switch (attr.name)
-				{
-					case "data-class":
-						bindClasses(element, model);
-						break;
-	
-					case "data-visible":
-					case "data-hidden":
-						bindVisibility(element, model, attr.name);
-						break;
-	
-					default:
-						if (attr.name.indexOf("data-attr-") == 0)
-						{
-							var attrName = attr.name.substring(10);
-							if (attr.value.match(RX_EXPRESSION))
-							{
-								var processed = bindString(attr.value, model);
-								element.setAttribute(attrName, processed);
-							}
-						}
-				}
-			}
-	
-			var nodes = [];
-			for (var i = 0; i < element.childNodes.length; i++)
-				nodes.push(element.childNodes[i]);
-	
-			for (var i = 0; i < nodes.length; i++)
-			{
-				var node = nodes[i];
-				if (node.nodeType == $xml.nodeType.COMMENT)
-				{
-					bindCommentNode.call(this, node, model);
-				}
-				else if (node.nodeType == $xml.nodeType.ELEMENT)
-				{
-					bindElementNode.call(this, node, model);
-				}
-			}
-		}
-	
-		function bindCommentNode(node, model)
-		{
-			if (node.nodeValue.match(RX_LOOPSTART))
-				bindLoopCommentNode.call(this, node, model);
-	
-			else if (node.nodeValue.match(RX_EXPRSTART))
-				bindTextCommentNode.call(this, node, model);
-		}
-	
-		function bindLoopCommentNode(node, model)
-		{
-			cleanupGeneratedContent(node);
-	
-			var loopIndex = node.nodeValue.match(RX_LOOPSTART)[1];
-			var loop = this.loops[loopIndex];
-			var collection = getValue(model, loop.expression);
-			var following = node.parentNode.childNodes[indexOf(node) + 1];
-			var index = 0;
-			for (var key in collection)
-			{
-				if (!collection.hasOwnProperty(key))
-					continue;
-	
-				var instance = loop.element.cloneNode(true);
-				var iterationModel = $.extend({}, model);
-				if ($type.isObject(collection[key]))
-					iterationModel = $.extend(iterationModel, collection[key]);
-	
-				iterationModel = $.extend(iterationModel,
-				{
-					_: collection[key],
-					$index: index,
-					$current: collection[key],
-					$key: key
-				});
-	
-				bindElementNode.call(this, instance, iterationModel);
-				attachEvents.call(this, instance);
-	
-				node.parentNode.insertBefore(instance, following);
-				index += 1;
-			}
-		}
-	
-		function bindTextCommentNode(node, model)
-		{
-			cleanupGeneratedContent(node);
-	
-			var expression = node.nodeValue.match(RX_EXPRSTART)[1];
-			var value = getValue(model, expression);
-			var textNode = node.ownerDocument.createTextNode(value);
-			node.parentNode.insertBefore(textNode, node.parentNode.childNodes[indexOf(node) + 1]);
-		}
-	
-		function cleanupGeneratedContent(commentStartNode)
-		{
-			var endExpression = commentStartNode.nodeValue.match(RX_LOOPSTART) ? RX_LOOPEND : RX_EXPREND;
-	
-			var parent = commentStartNode.parentNode;
-			var elements = [];
-			var capturing = false;
-			for (var i = 0; i < parent.childNodes.length; i++)
-			{
-				var node = parent.childNodes[i];
-				if (node == commentStartNode)
-				{
-					capturing = true;
-					continue;
-				}
-	
-				if (capturing)
-				{
-					if (node.nodeType == $xml.nodeType.COMMENT && node.nodeValue.match(endExpression))
-						break;
-	
-					elements.push(node);
-				}
-			}
-	
-			for (var i = 0; i < elements.length; i++)
-				parent.removeChild(elements[i]);
-		}
-	
-		function bindClasses(element, model)
-		{
-			var classSpec = element.getAttribute("data-class");
-			var classObj = {};
-			try
-			{
-				classObj = JSON.parse(classSpec);
-			}
-			catch(error)
-			{
-				console.debug(classSpec);
-				console.error(error);
-				return;
-			}
-	
-			var $el = $(element);
-			for (var className in classObj)
-			{
-				var expressionResult = evaluateExpression(classObj[className], model);
-				var classOn = (expressionResult == true || expressionResult == "true");
-				$el.toggleClass(className, classOn);
-			}
-		}
-	
-		function bindVisibility(element, model, attrName)
-		{
-			var expressionText = element.getAttribute(attrName);
-			var expressionResult = evaluateExpression(bindString(expressionText, model), model);
-	
-			var valid = (expressionResult == true || expressionResult == "true");
-			var show = attrName == "data-visible";
-	
-			if (show)
-				$(element).toggle(valid);
-			else
-				$(element).toggle(!valid);
-		}
-	
-		function bindString(template, model)
-		{
-			return template.replace(RX_EXPRESSION, function (match, expression)
-			{
-				return evaluateExpression(expression, model);
-			});
-		}
-	
-		function evaluateExpression(expression, model)
-		{
-			var parts = expression.trim().split(" ");
-			for (var i = 0; i < parts.length; i++)
-			{
-				if (isValidModelProperty(parts[i], model))
-				{
-					var value = getValue(model, parts[i]);
-					if (value == undefined || value == null)
-						value = "";
-	
-					parts[i] = value;
-				}
-			}
-	
-			expression = parts.join(" ");
-			if (parts.length == 1)
-				return expression;
-	
-			try
-			{
-				return eval(expression);
-			}
-			catch(error)
-			{
-				console.error(expression + ": " + error);
-				return error;
-			}
-		}
-	
-		function indexOf(node)
-		{
-			for (var i = 0; i < node.parentNode.childNodes.length; i++)
-			{
-				if (node.parentNode.childNodes[i] == node)
-					return i;
-			}
-	
-			return -1;
-		}
-	
-		function getValue(model, key)
-		{
-			if (model[key])
-				return model[key];
-	
-			var parts = key.split(".");
-	
-			var index = 0;
-			var currentObject = model;
-			var result, currentKey;
-	
-			while(currentObject != null && index < parts.length)
-			{
-				currentKey = parts[index++];
-				currentObject = currentObject[currentKey];
-				result = currentObject;
-			}
-	
-			return result;
-		}
-	
-		function isValidModelProperty(name, model)
-		{
-			var key1 = name.split(".")[0];
-			return model[key1] != undefined;
-		}
-	
-		function onViewEvent()
-		{
-	
-		}
-	
-		return (ModelBinder);
-	
-	}());
-	
-	
-
-	/**
 	 * @copyright 2012 Igor France
 	 * Licensed under the MIT License
 	 *
@@ -5542,6 +4448,21 @@ var one = (function one($)
 	
 	})();
 	
+	$xml.nodeType = {
+		ELEMENT: 1,
+		ATTRIBUTE: 2,
+		TEXT: 3,
+		CDATA_SECTION: 4,
+		ENTITY_REFERENCE: 5,
+		ENTITY: 6,
+		PROCESSING_INSTRUCTION: 7,
+		COMMENT: 8,
+		DOCUMENT: 9,
+		DOCUMENT_TYPE: 10,
+		DOCUMENT_FRAGMENT: 11,
+		NOTATION: 12
+	};
+	
 	/**
 	 * Defines various constant collections
 	 * @type {Object}
@@ -5937,125 +4858,6 @@ var one = (function one($)
 	
 		evt.transitionEnd = "transitionend webkitTransitionEnd";
 		return evt;
-	};
-	
-	/**
-	 * Click handler
-	 * @param element
-	 * @param handler
-	 * @constructor
-	 * @extends HtmlControl;
-	 */
-	var FastClick = HtmlControl.extend(function (element, handler)
-	{
-		this.construct(element);
-	
-		this.handler = handler;
-	
-		this.eventHandler = $.proxy(this.handleEvent, this);
-		this.$element.on("touchstart click", this.eventHandler);
-	});
-	FastClick.coordinates = [];
-	
-	FastClick.preventGhostClick = function (x, y)
-	{
-	  FastClick.coordinates.push(x, y);
-	  window.setTimeout(FastClick.pop, 2500);
-	};
-	
-	FastClick.pop = function()
-	{
-	  FastClick.coordinates.splice(0, 2);
-	};
-	
-	FastClick.onDocumentClick = function (e)
-	{
-		for (var i = 0; i < FastClick.coordinates.length; i += 2)
-		{
-	    var x = FastClick.coordinates[i];
-	    var y = FastClick.coordinates[i + 1];
-	    if (Math.abs(e.clientX - x) < 25 && Math.abs(e.clientY - y) < 25)
-	    {
-	      e.stopPropagation();
-	      e.preventDefault();
-	    }
-	  }
-	};
-	
-	/**
-	 * Routes events to appropriate handlers
-	 * @param {Event} event
-	 */
-	FastClick.prototype.handleEvent = function (event)
-	{
-		switch (event.type)
-		{
-			case 'touchstart': this.onTouchStart(event); break;
-			case 'touchmove': this.onTouchMove(event); break;
-			case 'touchend': this.onClick(event); break;
-			case 'click': this.onClick(event); break;
-	  }
-	};
-	
-	FastClick.prototype.reset = function()
-	{
-		this.$element.off("touchend", this.eventHandler);
-		$(document).off("touchmove", this.eventHandler);
-	};
-	
-	FastClick.prototype.onTouchStart = function(e)
-	{
-		var event = e.originalEvent || e;
-		event.stopPropagation();
-	
-		this.$element.on("touchend", this.eventHandler);
-		$(document).on("touchmove", this.eventHandler);
-	
-		this.startX = event.touches[0].clientX;
-		this.startY = event.touches[0].clientY;
-	};
-	
-	FastClick.prototype.onTouchMove = function(e)
-	{
-		var event = e.originalEvent || e;
-		if (
-			Math.abs(event.touches[0].clientX - this.startX) > 10 ||
-			Math.abs(event.touches[0].clientY - this.startY) > 10)
-		{
-			this.reset();
-		}
-	};
-	
-	FastClick.prototype.onClick = function(e)
-	{
-	  e.stopPropagation();
-	
-	  this.reset();
-	  this.handler(e);
-	
-	  if (e.type == 'touchend')
-	    FastClick.preventGhostClick(this.startX, this.startY);
-	};
-	
-	document.addEventListener("click", FastClick.onDocumentClick, true);
-	
-	$.fastclick = function (selection, handler)
-	{
-		$(selection).fastclick(handler);
-	};
-	
-	$.fn.fastclick = function ()
-	{
-		var handler = arguments[0];
-	
-		this.each(function ()
-		{
-			var $elem = $(this);
-			if (!$elem.data("fastclick"))
-				$elem.data("fastclick", new FastClick($elem, handler));
-		});
-	
-		return this;
 	};
 	
 	/**
@@ -6744,6 +5546,1159 @@ var one = (function one($)
 	
 		jQuery.extend(jQuery.easing, extension);
 	};
+	
+
+	/**
+	 * Provides information about a registered control.
+	 * @param {Function} type The function that implements the control.
+	 * @param {Object} options Optional contructor options to use when creating elements.
+	 * @param {String} expression The css expression string for elements that should be
+	 * assigned the control.
+	 */
+	var ControlTypeInfo = function ControlTypeInfo(type, options, expression)
+	{
+		//// Initialize the control
+		type.create = type.create || createInstance;
+		type.createElement = type.createElement || createElement;
+		type.get = type.get || getInstance;
+		type.register = type.register || registerConstructor;
+		type.dispose = type.dispose || $function.EMPTY;
+		type.start = type.start || $function.EMPTY;
+		type.instances = [];
+		type.options = $.extend({}, options);
+		type.registeredConstructors = {};
+		type.registerInstance = registerInstance;
+	
+		var info = this;
+		info.type = type;
+		info.defaultConstructor = type.Control || type;
+		info.typeName = one.func.getName(type);
+		info.expression = expression || type.expression;
+		info.async = type.async === true;
+		info.getInstance = getInstance;
+		info.createInstance = createInstance;
+	
+		/**
+		 * Checks whether the specified function is either the default constructor or one of the registered constructors of this type.
+		 * @param {Function} typeFunction The function to check.
+		 * @returns {Boolean} <c>true</c> if the specified function is either the default constructor or one of the
+		 * registered constructors of this type; otherwise <c>false</c>.
+		 */
+		this.checkType = function (typeFunction)
+		{
+			if (info.type == typeFunction)
+				return true;
+	
+			if (info.defaultConstructor == typeFunction)
+				return true;
+	
+			for (var expression in type.registeredConstructors)
+			{
+				if (type.registeredConstructors[expression] == typeFunction)
+					return true;
+			}
+	
+			return false;
+		};
+	
+		/**
+		 * Calls static redraw method of the registered control, if the control implements it.
+		 */
+		this.redraw = function ()
+		{
+			if ($type.isFunction(type.redraw))
+			{
+				type.redraw();
+			}
+		};
+	
+		/**
+		 * Sets up the control associated with this instance.
+		 * @param {Function} onTypeInitialized The callback function for asynchronous initialization.
+		 */
+		this.setup = function (onTypeInitialized)
+		{
+			if (type.setup && type.async)
+			{
+				type.setup(onTypeInitialized);
+			}
+			else if (type.setup)
+			{
+				type.setup();
+				onTypeInitialized();
+			}
+			else
+			{
+				onTypeInitialized();
+			}
+		};
+	
+		this.start = function start()
+		{
+			type.start();
+		};
+	
+		/**
+		 * Call the <code>dispose</code> method of the associated control.
+		 */
+		this.dispose = function()
+		{
+			if (type.dispose)
+			{
+				type.dispose();
+			}
+		};
+	
+		/**
+		 * Creates a new HTML element for use with the registered control.
+		 * @returns {HTMLElement} A new HTML element for use with the registered control.
+		 */
+		function createElement()
+		{
+			var result = document.createElement("div");
+			result.setAttribute("id", one.dom.uniqueID(result));
+			if (String(type.expression).trim().replace(/\./g, " ").match(/([\w\- ]+)/))
+				result.setAttribute("className", RegExp.$1);
+	
+			return result;
+		}
+	
+		/**
+		 * Creates a new control.
+		 * @example Create a new button
+		 * Button.create($("button.big"));
+		 * @example Create a new tab control
+		 * TabControl.create(myElement);
+		 * @param {HTMLElement} element The element that represents the control to create. Optional.
+		 * @param {Object} settings The object that holds the settings for the control to create. Optional.
+		 * @return {Object} The control that was created.
+		 */
+		function createInstance(element, settings)
+		{
+			var _settings = $.extend({}, type.options, settings);
+			if (element == null)
+			{
+				if ($type.isFunction(this.createElement))
+				{
+					element = this.createElement(_settings);
+				}
+				else
+				{
+					throw Error($string.format(
+						"No element has been provided and the control '{0}' doesn't have 'createElement' method, " +
+						"therefore a new element can't be created", one.func.getName(this)));
+				}
+			}
+	
+			var control = getInstance(element);
+			if (control == null)
+			{
+				var ctor = getConstructor(element);
+				control = new ctor(element, _settings);
+				if ($type.isFunction(control.init))
+					control.init();
+	
+				registerInstance(control);
+			}
+	
+			return control;
+		}
+	
+		function registerInstance(control)
+		{
+			if (!$type.instanceOf(control, HtmlControl))
+				return;
+	
+			control.$element.attr("id", $dom.uniqueID(control.$element));
+	
+			if (!type.instances.contains(control))
+				type.instances.push(control);
+		}
+	
+		/**
+		 * Gets the contructor function registered for the specified <c>element</c>.
+		 * @param {HTMLElement|jQuery} element Either the HTML element of jQuery selection of it.
+		 * @returns {Function} The function registered and the control constructor for the specified <c>element</c>.
+		 */
+		function getConstructor(element)
+		{
+			var constructor = info.defaultConstructor;
+			var $element = $(element);
+	
+			for (var expression in type.registeredConstructors)
+			{
+				if ($element.is(expression))
+				{
+					constructor = type.registeredConstructors[expression];
+					break;
+				}
+			}
+	
+			return constructor;
+		}
+	
+		/**
+		 * Gets the control instance associated with the specified <c>element</c>.
+		 * @param {String|Element} element Either the HTML element or ID of the element for
+		 * which to get the control instance.
+		 * @returns {HtmlControl} The control instance associated with the specified <c>element</c>.
+		 */
+		function getInstance(element)
+		{
+			if (element == null)
+				return null;
+	
+			if (element.jquery)
+				element = element[0];
+	
+			if ($type.isString(element))
+				element = $(element)[0];
+	
+			if (element == null)
+				return null;
+	
+			var checkString = $type.isString(element);
+			var checkElement = $type.isElement(element);
+	
+			for (var i = 0; i < type.instances.length; i++)
+			{
+				var instance = type.instances[i];
+				if (checkElement && instance.element()[0] == element)
+					return instance;
+	
+				if (checkString && instance.id() == element)
+					return instance;
+			}
+	
+			return null;
+		}
+	
+		/**
+		 * Registers a constructor to use (instead of the default constructor) when
+		 * creating control instances for elements that match the specified css expression.
+		 *
+		 * @example
+		 * Button.registerConstructor(MyConstructor, "#mybutton");
+		 * @example
+		 * Button.registerConstructor(RedButton, "div.buttons .button.red");
+		 * @param {String} expression The css expression that specifies for which elements
+		 * this constructor applies.
+		 * @param {Function} constructor The constructor function to use.
+		 */
+		function registerConstructor(expression, constructor)
+		{
+			if (!$type.isString(expression) && !$type.isFunction(constructor))
+				return $log.warn("Arguments expression:String and constructor:Function both need to be used");
+	
+			type.registeredConstructors[expression] = constructor;
+			return null;
+		}
+	};
+	
+	/**
+	 * Implements a global control registry.
+	 *
+	 * The control registry provides a centralized and streamlined way for controls to be discovered, initialized
+	 * and made available to the whole window.
+	 *
+	 * When a control is registered, it provides information about how it needs to be initialized; if the control need to
+	 * load resources asynchronously, it will wait on it to complete before signaling readiness.
+	 *
+	 * A registered control will be appended several methods that provide it with functionality to create get and create
+	 * instances, as well as to register custom constructors for specific elements.
+	 */
+	var ControlRegistry = Dispatcher.extend(function ControlRegistry()
+	{
+		this.construct();
+	
+		this.registerEvent("ready");
+		this.registerEvent("update");
+	
+		this.started = false;
+	
+		var types = [];
+		var expressions = [];
+	
+		var depth = 0;
+	
+		/**
+		 * Calls static redraw method on all control types that implement it.
+		 *
+		 * This provides a single point for redraw synchronization when arbitrary code element change the screen layout in
+		 * ways that require controls to be redrawn.
+		 */
+		this.redraw = function redraw()
+		{
+			for (var i = 0; i < types.length; i++)
+			{
+				types[i].redraw();
+			}
+		};
+	
+		/**
+		 * Registers a control.
+		 * @param {String} expression The css expression string for elements that should be
+		 * assigned the control.
+		 * @param {Object} options Optional contructor options to use when creating elements.
+		 * @param {Object} control The control factory object.
+		 */
+		this.register = function register(expression, control, options)
+		{
+			var _expression, _control, _options;
+			if (arguments.length == 1)
+			{
+				_control = arguments[0] || {};
+				_options = {};
+				_expression = _control.expression;
+			}
+			if (arguments.length == 2)
+			{
+				_expression = arguments[0];
+				_control = arguments[1] || {};
+				_options = {};
+			}
+			if (arguments.length == 3)
+			{
+				_expression = arguments[0];
+				_control = arguments[1] || {};
+				_options = arguments[2] || {};
+			}
+	
+			if (_expression)
+				expressions.push(_expression);
+	
+			var typeInfo = new ControlTypeInfo(_control, _options, _expression);
+			types.push(typeInfo);
+	
+			typeInfo.name = $type.isString(_control.NAME)
+				? _control.NAME
+				: $type.isFunction(_control)
+					? one.func.getName(_control)
+					: one.func.getName(_control.constructor);
+	
+			$log.info("Registered control {0}", typeInfo.name);
+	
+			return _control;
+		};
+	
+		/**
+		 * Searches through the registered controls and find an instance that matches the specification.
+		 * @param {Object} element Either the id of an HTML element or the HTML element itself.
+		 * @param {Object} type Either the class name associated with a control type, the name of the type or
+		 * the control type itself.
+		 * @returns {Control} The control associated with the specified element, and optionally $type.
+		 */
+		this.get = function get(element, type)
+		{
+			if (element == null)
+				return null;
+	
+			if (element.jquery)
+				element = element[0];
+	
+			if ($type.isString(element))
+				element = $(element)[0];
+	
+			if (element == null)
+				return null;
+	
+			var result = null;
+			for (var i = 0; i < types.length; i++)
+			{
+				var typeInfo = types[i];
+				if (type != null)
+				{
+					if (typeInfo.checkType(type) || typeInfo.typeName == type || typeInfo.expression.indexOf(type) != -1)
+					{
+						result = typeInfo.getInstance(element);
+						break;
+					}
+				}
+				else
+				{
+					// if no type has been specified, return the first matching control.
+					result = typeInfo.getInstance(element);
+					if (result != null)
+					{
+						break;
+					}
+				}
+			}
+	
+			return result;
+		};
+	
+		/**
+		 * Sets up all registered controls.
+		 * @param {Function} onSetupReady The function to call when the setup completes.
+		 */
+		this.setup = function setup(onSetupReady)
+		{
+			if (types.length == 0)
+			{
+				if ($type.isFunction(onSetupReady))
+					onSetupReady();
+	
+				return;
+			}
+	
+			var self = this;
+			var typesReady = 0;
+			for (var i = 0; i < types.length; i++)
+			{
+				var typeInfo = types[i];
+				typeInfo.setup(function onTypeInitialized()
+				{
+					if (++typesReady == types.length)
+					{
+						self.update();
+						if ($type.isFunction(onSetupReady))
+							onSetupReady();
+					}
+				});
+			}
+		};
+	
+		/**
+		 * Call <code>dispose</code> method on all registered controls.
+		 */
+		this.dispose = function dispose()
+		{
+			for (var i = 0; i < types.length; i++)
+				types[i].dispose();
+		};
+	
+		/**
+		 * Provides a method that can be called to signal that the outer initialization is
+		 * completed and that all controls can now be started.
+		 */
+		this.start = function start()
+		{
+			for (var i = 0; i < types.length; i++)
+				types[i].start();
+	
+			this.fireEvent("ready");
+			this.started = true;
+		};
+	
+		/**
+		 * Discovers and initializes registered controls within the specified <c>parent</c>.
+		 *
+		 * @param {Object} parent The parent element in which to discover and update controls. If omitted it defaults to
+		 * whole document.
+		 */
+		this.update = function update(parent)
+		{
+			depth++;
+	
+			if (depth < 10)
+			{
+				var elements = $(expressions.join(", "), parent || document);
+	
+				if (elements.length > 0)
+				{
+					for (var i = 0; i < types.length; i++)
+					{
+						var count = 0;
+						var typeInfo = types[i];
+						var matches = elements.filter(typeInfo.expression);
+	
+						for (var j = 0; j < matches.length; j++)
+						{
+							var control = typeInfo.getInstance(matches[j]);
+							if (control == null)
+							{
+								typeInfo.createInstance(matches[j], null, depth);
+								count++;
+							}
+						}
+	
+						if (count != 0)
+							console.log("Created {0} instance(s) of {1}".format(count, typeInfo.name));
+					}
+				}
+			}
+			else
+			{
+				one.log.warn("An attempt was made to recurse into ControlRegistry.update deeper than 10 levels. Check the code for infinite loops");
+			}
+	
+			depth--;
+	
+			if (depth == 0)
+			{
+				this.fireEvent("update");
+			}
+		};
+	
+	});
+	
+	/**
+	 * Provides a base class for HTML controls.
+	 * @param {HTMLElement} element The HTML element that this control wraps.
+	 * @arguments {String} [1-n] Any events that this control dispatches.
+	 * @class
+	 * @constructor
+	 * @extends {Dispatcher}
+	 */
+	var HtmlControl = Dispatcher.extend(function HtmlControl(element)
+	{
+		this.construct($array.fromArguments(arguments, 1));
+	
+		/**
+		 * @type {jQuery}
+		 */
+		this.$element = $(element);
+	
+		/**
+		 * @type {Settings}
+		 */
+		this.settings = new Settings();
+	});
+	
+	/**
+	 * Gets or sets the id of the element that this control uses.
+	 * @param {String} [id] The new id top to set on the element.
+	 * @returns {String} The current id of the element.
+	 */
+	HtmlControl.prototype.id = function HtmlControl$id(id)
+	{
+		if ($type.isString(id))
+			this.$element.attr("id", id);
+	
+		return this.$element.attr("id");
+	};
+	
+	HtmlControl.prototype.destroy = function HtmlControl$destroy()
+	{
+		this.base("destroy");
+		for (var prop in this)
+		{
+			if (prop.indexOf("$") == 0)
+				delete this[prop];
+		}
+	};
+	
+	/**
+	 * Gets the HTML element that this control uses.
+	 * @returns {jQuery} The element that this control uses.
+	 */
+	HtmlControl.prototype.element = function HtmlControl$element()
+	{
+		return this.$element;
+	};
+	
+	HtmlControl.prototype.setModel = function HtmlControl$setModel(viewModel)
+	{
+		if (this.viewBinder == null)
+		{
+			this.viewBinder = new ModelBinder(this.$element);
+		}
+	
+		this.viewBinder.setModel(viewModel);
+	};
+	
+	/**
+	 * Gets a string that represents this element.
+	 * @returns {String} A string that represents this element.
+	 */
+	HtmlControl.prototype.toString = function HtmlControl$toString()
+	{
+		var name = one.func.getName(this.constructor);
+		if (this.$element.length == 0)
+			return $string.format("{0}(null)", name);
+	
+		var attrId = this.id();
+		var attrClass = this.$element.attr("class");
+		var tagName = String(this.$element.prop("tagName")).toLowerCase();
+		return $string.format("{0}(\"{1}{2}{3}\")", name, tagName,
+			attrClass ? "." + attrClass.replace(/\s+/, ".") : $string.EMPTY,
+			attrId ? "#" + attrId : $string.EMPTY);
+	};
+	
+	HtmlControl.prototype.get = function HtmlControl$set(propName)
+	{
+		if (this.settings === undefined)
+			return console.warn("Can't get '{0}' because the current control doesn't have an associated settings object.".format(propName));
+	
+		return this.settings.get(propName);
+	};
+	
+	HtmlControl.prototype.set = function HtmlControl$set(propName, propValue)
+	{
+		if (this.settings === undefined)
+			return console.warn("Can't set '{0}' to '{1}' because the current control doesn't have an associated settings object.".format(propName, propValue));
+	
+		this.settings.set(propName, propValue);
+		return this.settings.get(propName);
+	};
+	
+	HtmlControl.PROPS =
+	{
+		VERTICAL:
+		{
+			scrollSize: "scrollHeight",
+			scrollPos: "scrollTop",
+			offsetPos: "offsetTop",
+			size: "height",
+			outerSize: "outerHeight",
+			position: "top",
+			positionAlt: "bottom",
+			scrollPadding: "paddingRight",
+			scrollPaddingSize: "width",
+			minPos: "minY",
+			maxPos: "maxY",
+			paddingStart: "paddingTop",
+			paddingEnd: "paddingBottom",
+			marginStart: "marginTop",
+			eventPos: "eventY",
+			eventOffsetPos: "offsetY",
+			startEventPos: "startEventY"
+		},
+	
+		HORIZONTAL:
+		{
+			scrollSize: "scrollWidth",
+			scrollPos: "scrollLeft",
+			offsetPos: "offsetLeft",
+			size: "width",
+			outerSize: "outerWidth",
+			position: "left",
+			positionAlt: "right",
+			scrollPadding: "paddingBottom",
+			scrollPaddingSize: "height",
+			minPos: "minX",
+			maxPos: "maxX",
+			paddingStart: "paddingLeft",
+			paddingEnd: "paddingRight",
+			marginStart: "marginLeft",
+			eventPos: "eventX",
+			eventOffsetPos: "offsetX",
+			startEventPos: "startEventX"
+		}
+	};
+	
+	var ModelBinder = (function ()
+	{
+		/**
+		 * Placeholder pattern.
+		 * Matches
+		 * @type {RegExp}
+		 */
+		var RX_EXPRESSION = /\$\{([^{}]+)}/g;
+		var RX_LOOPSTART = /^loopstart_(\d+)$/;
+		var RX_LOOPEND = /^loopend$/;
+		var RX_EXPRSTART = /^expr:\$\{([^{}]+)}$/;
+		var RX_EXPREND = /^exprend$/;
+	
+		var initialized = [];
+	
+		//noinspection JSUnresolvedVariable
+		var nodeType = $xml.nodeType;
+	
+		var nodeBinders = {
+			"1": [], // ELEMENT
+			"2": [], // ATTRIBUTE
+			"3": [], // TEXT
+			"8": [] // COMMENT
+		};
+	
+		var ModelBinder = Dispatcher.extend(function ModelBinder(element)
+		{
+			this.construct();
+	
+			this.loops = [];
+			this.element = null;
+			this.template = null;
+			this.model = null;
+	
+			if (element)
+				this.initialize(element);
+		});
+	
+		ModelBinder.prototype.initialize = function (element)
+		{
+			this.loops = [];
+			this.element = $(element)[0];
+	
+			if (initialized.indexOf(this.element) == -1)
+			{
+				prepareNode.call(this, this.element);
+				this.element.loops = this.loops;
+				initialized.push(this.element);
+			}
+			else
+			{
+				this.loops = this.element.loops;
+			}
+		};
+	
+		ModelBinder.prototype.setModel = function (model)
+		{
+			this.model = model;
+			bindNode.call(this, this.element, model);
+		};
+	
+		ModelBinder.registerNodeBinder = function (nodeType, nodeBinderSpec)
+		{
+			nodeBinders[nodeType].push(nodeBinderSpec);
+		};
+	
+		function prepareNode(node)
+		{
+			switch (node.nodeType)
+			{
+				case nodeType.ELEMENT:
+					prepareElementNode.call(this, node);
+					break;
+	
+				case nodeType.TEXT:
+					prepareTextNode.call(this, node);
+					break;
+	
+				default:
+					return;
+			}
+		}
+	
+		function prepareElementNode(node)
+		{
+			for (var i = 0; i < node.childNodes.length; i++)
+					prepareNode.call(this, node.childNodes[i]);
+	
+			var foreach = node.getAttribute("data-foreach");
+			var visible = node.getAttribute("data-visible");
+			var hidden = node.getAttribute("data-hidden");
+	
+			if (foreach)
+			{
+				var index = this.loops.length;
+				var commentStart = node.ownerDocument.createComment("loopstart_" + index);
+				var commentEnd = node.ownerDocument.createComment("loopend");
+				node.parentNode.insertBefore(commentStart, node);
+				node.parentNode.insertBefore(commentEnd, node);
+				node.parentNode.removeChild(node);
+	
+				node.removeAttribute("data-foreach");
+				this.loops.push({ element: node, expression: foreach });
+			}
+			else
+			{
+				if (visible)
+					$(node).hide();
+	
+				attachEvents.call(this, node);
+			}
+		}
+	
+		function prepareTextNode(node)
+		{
+			var text = node.nodeValue;
+			if (text.match(RX_EXPRESSION))
+			{
+				var start = 0;
+				var slices = [];
+				var keys = [];
+	
+				// run greedy RX_EXPRESSION against the node text to find all the placeholders and their insert points
+				text.replace(RX_EXPRESSION, function (match, key, index)
+				{
+					var slice = text.substring(start, index);
+					slices.push(slice);
+					keys.push(key);
+					start = index + match.length;
+				});
+	
+				// now replace the placeholders with comments
+				for (var i = 0; i < slices.length; i++)
+				{
+					node.parentNode.insertBefore(node.ownerDocument.createTextNode(slices[i]), node);
+					node.parentNode.insertBefore(node.ownerDocument.createComment("expr:${" + keys[i] + "}"), node);
+					node.parentNode.insertBefore(node.ownerDocument.createComment("exprend"), node);
+				}
+	
+				node.parentNode.removeChild(node);
+			}
+		}
+	
+		function attachEvents(element)
+		{
+			for (var i = 0; i < element.childNodes.length; i++)
+			{
+				if (element.childNodes[i].nodeType == nodeType.ELEMENT)
+					attachEvents.call(this, element.childNodes[i]);
+			}
+	
+			for (i = 0; i < element.attributes.length; i++)
+			{
+				var attr = element.attributes[i];
+				if (attr.name.indexOf("data-emit-") != 0)
+					continue;
+	
+				var params = [];
+				var sourceEventName = attr.name.replace("data-emit-", "");
+				var targetEventName = attr.value.replace(/\((.*)\)/, function ($0, $1)
+				{
+					if ($1)
+					{
+						params = $1.replace(/\s*,\s*/g, ",").split(",");
+						return "";
+					}
+				});
+	
+				attachEvent.call(this, element, sourceEventName, targetEventName, params);
+			}
+		}
+	
+		function attachEvent(element, eventName, emitEventName, eventParams)
+		{
+			this.registerEvent(emitEventName);
+	
+			var $element = $(element);
+			$element.data("emit-" + eventName, emitEventName);
+			$element.data("emit-params", eventParams);
+			$element.off(eventName).on(eventName, $.proxy(viewEventHandler, this));
+		}
+	
+		function viewEventHandler(e)
+		{
+			var $element = $(e.target);
+			var emitEventName = $element.data("emit-" + e.type);
+			var eventParams = $element.data("emit-params");
+			var params = [];
+	
+			if (eventParams)
+			{
+				var self = this;
+				params = eventParams.map(function (param)
+				{
+					return evaluateExpression(param, self.model);
+				});
+			}
+	
+			var event = new $evt.Event(this, emitEventName, params);
+			event.originalEvent = e;
+			this.fire(emitEventName, event);
+			console.log("Firing {0} from event {1} with params: {2}".format(emitEventName, e.type, params));
+	
+		}
+	
+		function bindNode(node, model)
+		{
+			var type = node.nodeType;
+			if (!nodeBinders[type])
+				return;
+	
+			var nodeBinder = selectNodeBinder(node, nodeBinders[type]);
+			if (nodeBinder)
+				nodeBinder.call(this, node, model);
+		}
+	
+		function bindString(template, model)
+		{
+			return template.replace(RX_EXPRESSION, function (match, expression)
+			{
+				return evaluateExpression(expression, model);
+			});
+		}
+	
+		function selectNodeBinder(node, handlers)
+		{
+			for (var i = 0; i < handlers.length; i++)
+			{
+				if (handlers[i].expression)
+				{
+					var expressions = handlers[i].expression;
+					expressions = $type.isArray(expressions) ? expressions : [expressions];
+	
+					for (var j = 0; j < expressions.length; j++)
+					{
+						var expr = expressions[j];
+						if (expr && node.nodeValue.match(expr))
+							return handlers[i].handler;
+					}
+				}
+				else
+				{
+					var match = false;
+					var nodeName = node.nodeName;
+					var names = handlers[i].name;
+					names = $type.isArray(names) ? names : [names];
+	
+					for (j = 0; j < names.length; j++)
+					{
+						var name = names[j];
+						if (name.indexOf("*") == name.length - 1) // data-attr-*
+							match = node.nodeName.indexOf(name.substring(0, name.indexOf("*"))) == 0;
+	
+						else if (name.indexOf("*") == 0) // *-attr
+							match = nodeName.substring(nodeName.length - (name.length - 1), nodeName.length) == name.substring(1);
+	
+						else
+							match = handlers[i].name == node.nodeName;
+	
+						if (match)
+							return handlers[i].handler;
+					}
+	
+				}
+			}
+	
+			if (handlers["*"])
+				return handlers["*"].handler;
+		}
+	
+		function reset(element)
+		{
+			var comments = [];
+			for (var i = 0; i < element.childNodes.length; i++)
+			{
+				var node = element.childNodes[i];
+				if (node.nodeType == nodeType.COMMENT)
+				{
+					if (node.nodeValue.match(RX_LOOPSTART) || node.nodeValue.match(RX_EXPRSTART))
+						comments.push(node);
+				}
+			}
+	
+			for (var j = 0; j < comments.length; j++)
+			{
+				cleanupGeneratedContent(comments[j]);
+			}
+	
+			for (var k = 0; k < element.attributes.length; k++)
+			{
+				var attr = element.attributes[k];
+				if (attr.name.indexOf("data-attr-") == 0)
+				{
+					var attrName = attr.name.substring(10);
+					element.removeAttribute(attrName);
+				}
+			}
+		}
+	
+		function cleanupGeneratedContent(commentStartNode)
+		{
+			var endExpression = commentStartNode.nodeValue.match(RX_LOOPSTART) ? RX_LOOPEND : RX_EXPREND;
+	
+			var parent = commentStartNode.parentNode;
+			var elements = [];
+			var capturing = false;
+			for (var i = 0; i < parent.childNodes.length; i++)
+			{
+				var node = parent.childNodes[i];
+				if (node == commentStartNode)
+				{
+					capturing = true;
+					continue;
+				}
+	
+				if (capturing)
+				{
+					if (node.nodeType == nodeType.COMMENT && node.nodeValue.match(endExpression))
+						break;
+	
+					elements.push(node);
+				}
+			}
+	
+			for (var i = 0; i < elements.length; i++)
+				parent.removeChild(elements[i]);
+		}
+	
+		function evaluateExpression(expression, model)
+		{
+			var parts = expression.trim().split(" ");
+			for (var i = 0; i < parts.length; i++)
+			{
+				if (isValidModelProperty(parts[i], model))
+				{
+					var value = getValue(model, parts[i]);
+					if (value == undefined || value == null)
+						value = "";
+	
+					parts[i] = value;
+				}
+			}
+	
+			expression = parts.join(" ");
+			if (parts.length == 1)
+				return expression;
+	
+			try
+			{
+				return eval(expression);
+			}
+			catch(error)
+			{
+				console.error(expression + ": " + error);
+				return error;
+			}
+		}
+	
+		function indexOf(node)
+		{
+			for (var i = 0; i < node.parentNode.childNodes.length; i++)
+			{
+				if (node.parentNode.childNodes[i] == node)
+					return i;
+			}
+	
+			return -1;
+		}
+	
+		function getValue(model, key)
+		{
+			if (model[key])
+				return model[key];
+	
+			var parts = key.split(".");
+	
+			var index = 0;
+			var currentObject = model;
+			var result, currentKey;
+	
+			while(currentObject != null && index < parts.length)
+			{
+				currentKey = parts[index++];
+				currentObject = currentObject[currentKey];
+				result = currentObject;
+			}
+	
+			return result;
+		}
+	
+		function isValidModelProperty(name, model)
+		{
+			var key1 = name.split(".")[0];
+			return model[key1] != undefined;
+		}
+	
+		function attributeParent(attr)
+		{
+			return attr.parentNode || attr.ownerElement;
+		}
+	
+		function defaultAttributeBinder(attr, model)
+		{
+			var attrName = attr.name.substring(10);
+			if (attr.value.match(RX_EXPRESSION))
+			{
+				var processed = bindString(attr.value, model);
+				attributeParent(attr).setAttribute(attrName, processed);
+			}
+		}
+	
+		function classAttributeBinder(node, model)
+		{
+			var element = attributeParent(node);
+			var classSpec = element.getAttribute("data-class");
+			var classObj = {};
+			try
+			{
+				classObj = JSON.parse(classSpec);
+			}
+			catch(error)
+			{
+				console.debug(classSpec);
+				console.error(error);
+				return;
+			}
+	
+			var $el = $(element);
+			for (var className in classObj)
+			{
+				var expressionResult = evaluateExpression(classObj[className], model);
+				var classOn = (expressionResult == true || expressionResult == "true");
+				$el.toggleClass(className, classOn);
+			}
+		}
+	
+		function visibilityAttributeBinder(node, model)
+		{
+			var attrName = node.nodeName;
+			var expressionText = element.getAttribute(attrName);
+			var expressionResult = evaluateExpression(bindString(expressionText, model), model);
+	
+			var valid = (expressionResult == true || expressionResult == "true");
+			var show = attrName == "data-visible";
+	
+			$(attributeParent(node)).toggle(show ? valid : !valid);
+		}
+	
+		function defaultElementBinder(element, model)
+		{
+			reset(element);
+	
+			var i;
+			var nodes = [];
+	
+			for (i = 0; i < element.attributes.length; i++)
+				bindNode.call(this, element.attributes[i], model);
+	
+			for (i = 0; i < element.childNodes.length; i++)
+				nodes.push(element.childNodes[i]);
+	
+			for (i = 0; i < nodes.length; i++)
+				bindNode.call(this, nodes[i], model);
+		}
+	
+		function expressionCommentBinder(node, model)
+		{
+			cleanupGeneratedContent(node);
+	
+			var expression = node.nodeValue.match(RX_EXPRSTART)[1];
+			var value = getValue(model, expression);
+			var textNode = node.ownerDocument.createTextNode(value);
+			node.parentNode.insertBefore(textNode, node.parentNode.childNodes[indexOf(node) + 1]);
+		}
+	
+		function loopCommentBinder(node, model)
+		{
+			cleanupGeneratedContent(node);
+	
+			var loopIndex = node.nodeValue.match(RX_LOOPSTART)[1];
+			var loop = this.loops[loopIndex];
+			var collection = getValue(model, loop.expression);
+			var following = node.parentNode.childNodes[indexOf(node) + 1];
+			var index = 0;
+			for (var key in collection)
+			{
+				if (!collection.hasOwnProperty(key))
+					continue;
+	
+				var instance = loop.element.cloneNode(true);
+				var iterationModel = $.extend({}, model);
+				if ($type.isObject(collection[key]))
+					iterationModel = $.extend(iterationModel, collection[key]);
+	
+				iterationModel = $.extend(iterationModel,
+				{
+					_: collection[key],
+					$index: index,
+					$current: collection[key],
+					$key: key
+				});
+	
+				bindNode.call(this, instance, iterationModel);
+				attachEvents.call(this, instance);
+	
+				node.parentNode.insertBefore(instance, following);
+				index += 1;
+			}
+		}
+	
+		ModelBinder.registerNodeBinder(nodeType.ATTRIBUTE, { name: "data-attr-*", handler: defaultAttributeBinder });
+		ModelBinder.registerNodeBinder(nodeType.ATTRIBUTE, { name: "data-class", handler: classAttributeBinder});
+		ModelBinder.registerNodeBinder(nodeType.ATTRIBUTE, { name: ["data-visible", "data-hidden"], handler: visibilityAttributeBinder});
+		ModelBinder.registerNodeBinder(nodeType.ELEMENT, { name: "*", handler: defaultElementBinder });
+		ModelBinder.registerNodeBinder(nodeType.COMMENT, { expression: RX_EXPRSTART, handler: expressionCommentBinder });
+		ModelBinder.registerNodeBinder(nodeType.COMMENT, { expression: RX_LOOPSTART, handler: loopCommentBinder });
+	
+		return (ModelBinder);
+	
+	}());
+	
 	
 	/**
 	 * @copyright 2012 Igor France
