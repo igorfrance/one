@@ -25,7 +25,6 @@ var one = (function one($)
 	/* @include utils/Dom.js  */
 	/* @include utils/Log.js  */
 	/* @include utils/Url.js  */
-	/* @include utils/Url.js  */
 	/* @include utils/Cookie.js  */
 	/* @include utils/Initializer.js  */
 	/* @include utils/Xml.js  */
@@ -38,6 +37,7 @@ var one = (function one($)
 	/* @include controls/ControlRegistry.js  */
 	/* @include controls/HtmlControl.js  */
 	/* @include controls/ModelBinder.js  */
+	/* @include controls/FastClick.js  */
 	/* @include controls/ximage/Image.js  */
 
 	one.Prototype = Prototype;

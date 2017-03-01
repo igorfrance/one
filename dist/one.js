@@ -1792,14 +1792,15 @@ var one = (function one($)
 		var dataObject = data && data.jquery ? data[0] : data;
 		var overrideObject = override && override.jquery ? override[0] : override;
 	
+		var attrName = name.toLowerCase();
 		var result = defaultValue;
 		if ($type.isElement(overrideObject))
 		{
-			if (overrideObject.getAttribute("data-" + name))
-				result = overrideObject.getAttribute("data-" + name);
+			if (overrideObject.getAttribute("data-" + attrName))
+				result = overrideObject.getAttribute("data-" + attrName);
 	
-			else if (overrideObject.getAttribute(name))
-				result = overrideObject.getAttribute(name);
+			else if (overrideObject.getAttribute(attrName))
+				result = overrideObject.getAttribute(attrName);
 		}
 		else if (overrideObject && overrideObject[name] != undefined)
 		{
@@ -1807,11 +1808,11 @@ var one = (function one($)
 		}
 		else if ($type.isElement(dataObject))
 		{
-			if (dataObject.getAttribute("data-" + name))
-				result = dataObject.getAttribute("data-" + name);
+			if (dataObject.getAttribute("data-" + attrName))
+				result = dataObject.getAttribute("data-" + attrName);
 	
-			else if (dataObject.getAttribute(name))
-				result = dataObject.getAttribute(name);
+			else if (dataObject.getAttribute(attrName))
+				result = dataObject.getAttribute(attrName);
 		}
 		else if (dataObject && dataObject[name] != undefined)
 		{
@@ -2623,551 +2624,6 @@ var one = (function one($)
 		return log;
 	
 	})();
-	
-	/**
-	 * @copyright 2012 Igor France
-	 * Licensed under the MIT License
-	 *
-	 * This file is a part of the one.js
-	 */
-	
-	/**
-	 * Provides a proxy object that can be used across different browsers to log to console.
-	 * @type {Object}
-	 */
-	var $url = new function url()
-	{
-		var url = function makeUrl(value)
-		{
-			var result = new Url();
-			result.parse($type.isString(value) ? value : location.href);
-			return result;
-		};
-	
-		/**
-		 * Defines the regular expression that matches different parts of a URL.
-		 * The different parts of the URL that this expression matches are:
-		 * <ul>
-		 * <li>protocol</li>
-		 * <li>authority<ul>
-		 *    <li>userInfo<ul>
-		 *       <li>user</li>
-		 *       <li>password</li>
-		 *    </ul></li>
-		 *    <li>host</li>
-		 *    <li>port</li></ul></li>
-		 * <li>relative<ul>
-		 *    <li>path<ul>
-		 *        <li>directory</li>
-		 *        <li>file</li></ul></li>
-		 *     <li>query</li>
-		 *     <li>anchor (fragment)</li>
-		 * </ul></li></ul>
-		 * @type {RegExp}
-		 */
-		url.URL_EXPRESSION =
-			/^(?:(?![^:@]+:[^:@\/]*@)([^:\/?#.]+):)?(?:\/\/)?((?:(([^:@]*)(?::([^:@]*))?)?@)?([^:\/?#]*)(?::(\d*))?)(((\/(?:[^?#](?![^?#\/]*\.[^?#\/.]+(?:[?#]|$)))*\/?)?([^?#\/]*))(?:\?([^#]*))?(?:#(.*))?)/;
-	
-		/**
-		 * The url component names corresponding to the sub-match indexes of the regular expression <c>URL_EXPRESSION</c>.
-		 * @type {Array.<String>}
-		 */
-		url.COMPONENT_NAMES =
-			["source", "protocol", "authority", "userInfo", "user", "password", "host", "port", "relative", "path", "directory", "file", "query", "hash"];
-	
-		/**
-		 * Specifies the protocol separator string ("://").
-		 * @type {String}
-		 */
-		url.PROTOCOL_SEPARATOR = "://";
-	
-		/**
-		 * Specifies the string to use to indicate an empty hash string and to interpret a hash string as empty.
-		 * When manipulating hash parameters of the browser's location object by using <c>Url.setHash</c>, <c>Url.setHashParam</c>
-		 * and <c>Url.removeHashParam</c> methods, and the resulting hash is an empty string, the browser's location will contain
-		 * a hash character ("#") without any value following. Setting the location hash to '#' will cause the browser to
-		 * scroll to the top of the page, which is most of the time not the desired effect. To prevent that, this class uses
-		 * the string specified with this constant to indicate an empty string. In other words, if the hash contains just this
-		 * character it is considered empty, and similarly, if the resulting hash to set is an empty string, the value that
-		 * will be set will be this character.
-		 * @type {String}
-		 * @constant
-		 */
-		url.EMPTY_HASH = "!";
-	
-		/**
-		 * The default character (&) to use as the name/value pair separator within url query strings and hashes.
-		 * @type {string}
-		 */
-		url.DEFAULT_SEPARATOR = "&";
-	
-		/**
-		 * The default character (=) to use as the names/value separator within url query strings and hashes.
-		 * @type {string}
-		 */
-		url.DEFAULT_EQUALS = "=";
-	
-		/**
-		 * Provides a wrapper around a url parsed from a string, and a set of static methods for working with the
-		 * browser's location object.
-		 * @param {String} [value] The url string to use to initialize a new instance with. If omitted, the url of the
-		 * browser's current location is used.
-		 * @param {Object} [options] The object that specifies the options of this instance.
-		 * <dl>
-		 *   <dt>separator</dt>
-		 *     <dd>the character to use as the name/value pair separator within url query strings and hashes</dd>
-		 *   <dt>equals</dt>
-		 *     <dd>the character to use as the names/value separator within url query strings and hashes.</dd>
-		 * </dl>
-		 */
-		function Url(value, options)
-		{
-			options = options || {};
-	
-			this.separator = options.separator || url.DEFAULT_SEPARATOR;
-			this.equals = options.equals || url.DEFAULT_EQUALS;
-	
-			this.init();
-	
-			if (value)
-				this.parse(value);
-		}
-	
-		/**
-		 * Initializes all url components to blank values.
-		 * @return {Url} The current instance.
-		 */
-		Url.prototype.init = function ()
-		{
-			this.components = {
-				source: $string.EMPTY,
-				protocol: $string.EMPTY,
-				authority: $string.EMPTY,
-				userInfo: $string.EMPTY,
-				user: $string.EMPTY,
-				password: $string.EMPTY,
-				host: $string.EMPTY,
-				port: $string.EMPTY,
-				relative: $string.EMPTY,
-				path: $string.EMPTY,
-				directory: $string.EMPTY,
-				file: $string.EMPTY,
-				query: $string.EMPTY,
-				hash: $string.EMPTY
-			};
-	
-			this.hashParam = {};
-			this.queryParam = {};
-	
-			return this;
-		};
-	
-		Url.prototype.qualify = function (value)
-		{
-			if (!value)
-				return $string.EMPTY;
-	
-			if (value.indexOf("//") != -1)
-				return value;
-	
-			if (value.indexOf("/") == 0)
-				return [
-					this.components.protocol, url.PROTOCOL_SEPARATOR,
-					this.components.authority,
-					value].join($string.EMPTY);
-	
-			return [
-				this.components.protocol, url.PROTOCOL_SEPARATOR,
-				this.components.authority,
-				this.components.directory,
-				value].join($string.EMPTY);
-		};
-	
-	
-		/**
-		 * Gets all hash parameters from this <c>Url</c> instance, optionally prefixed with the specified <c>prefix</c>.
-		 * @param {String} prefix The character to prefix the resulting  string with
-		 * @returns {String}
-		 */
-		Url.prototype.getHash = function (prefix)
-		{
-			return url.serializeParams(this.hashParam, { prefix: prefix || $string.EMPTY });
-		};
-	
-		/**
-		 * Gets all query string parameters from this <c>Url</c> instance, optionally prefixed with the specified <c>prefix</c>.
-		 * @param {String} prefix The character to prefix the resulting  string with
-		 * @returns {String}
-		 */
-		Url.prototype.getQuery = function (prefix)
-		{
-			return url.serializeParams(this.queryParam, { prefix: prefix || $string.EMPTY });
-		};
-	
-		/**
-		 * Gets the query string parameter with the specified <c>name</c>.
-		 * @param {String} name The name of the parameter to get.
-		 * @return {String} The value of the parameter.
-		 */
-		Url.prototype.getQueryParam = function (name)
-		{
-			return this.queryParam[name];
-		};
-	
-		/**
-		 * Gets the hash parameter with the specified <c>name</c>.
-		 * @param {String} name The name of the parameter to get.
-		 * @return {String} The value of the parameter.
-		 */
-		Url.prototype.getHashParam = function (name)
-		{
-			return this.hashParam[name];
-		};
-	
-		/**
-		 * Sets the query string parameter with the specified <c>name</c> the value of the specified <c>value</c>.
-		 * @param {String} name The name of the parameter to set.
-		 * @param {String} value The value to set.
-		 * @return {Url} The current instance
-		 */
-		Url.prototype.setQueryParam = function (name, value)
-		{
-			this.queryParam[name] = value;
-			return this;
-		};
-	
-		/**
-		 * Sets the hash parameter with the specified <c>name</c> the value of the specified <c>value</c>.
-		 * @param {String} name The name of the parameter to set.
-		 * @param {String} value The value to set.
-		 * @return {Url} The current instance
-		 */
-		Url.prototype.setHashParam = function (name, value)
-		{
-			this.hashParam[name] = value;
-			return this;
-		};
-	
-		/**
-		 * Removes the parameter with the specified <c>name</c> from the query string component of the current object.
-		 * @param {String} name The name of the parameter to remove.
-		 * @return {Url} The current instance
-		 */
-		Url.prototype.removeQueryParam = function (name)
-		{
-			delete this.queryParam[name];
-			return this;
-		};
-	
-		/**
-		 * Removes the parameter with the specified <c>name</c> from the hash component of the current object.
-		 * @param {String} name The name of the parameter to remove.
-		 * @return {Url} The current instance
-		 */
-		Url.prototype.removeHashParam = function (name)
-		{
-			delete this.hashParam[name];
-			return this;
-		};
-	
-		/**
-		 * Parses the specified <c>value</c> as url components and stores them into the current instance.
-		 * @param {String} value
-		 * @return {Url} The current instance
-		 */
-		Url.prototype.parse = function (value)
-		{
-			if (value == null)
-				return this;
-	
-			var matches = url.URL_EXPRESSION.exec(value);
-	
-			for (var i = url.COMPONENT_NAMES.length - 1; i > 0; i--)
-				this.components[url.COMPONENT_NAMES[i]] = matches[i] || $string.EMPTY;
-	
-			var hash = this.components.hash;
-			var query = this.components.query;
-	
-			if (hash.indexOf("!") == 0)
-				hash = hash.substring(1);
-	
-			this.hashParam = url.parseQuery(hash);
-			this.queryParam = url.parseQuery(query);
-	
-			return this;
-		};
-	
-		/**
-		 * Creates a complete url string made of all components of this <c>Url</u> instance.
-		 * @returns {String}
-		 */
-		Url.prototype.toString = function ()
-		{
-			var prefix = this.components.protocol
-				? $string.concat(this.components.protocol, url.PROTOCOL_SEPARATOR)
-				: $string.EMPTY;
-	
-			return $string.concat(
-				prefix,
-				this.components.authority,
-				this.components.path,
-				url.serializeParams(this.queryParam, { prefix: "?", encode: true }),
-				url.serializeParams(this.hashParam, { prefix: "#", encode: false })
-			);
-		};
-	
-		/**
-		 * Combines the parent <c>folderUrl</c> with the child <c>fileUrl</c> into a single URL.
-		 * @param {String} folderUrl The parent URL to combine, e.g. <c>my/directory/to/files</c>.
-		 * @param {String} fileUrl The child URL to combine, e.g. <c>../file2.txt</c>
-		 * @return {String} The combined URL.
-		 * @example
-		 * // the following returns "my/directory/to/file2.txt":
-		 * var combined = combine("my/directory/to/files", "../file2.txt");
-		 */
-		url.combine = function (folderUrl, fileUrl)
-		{
-			var filePath = $string.concat(folderUrl, "/", fileUrl);
-			while (filePath.match(/[^\/]+\/\.\.\//))
-			{
-				filePath = filePath.replace(/[^\/]+\/\.\.\//, "");
-			}
-			return filePath.replace(/\/{2,}/g, "/");
-		};
-	
-		/**
-		 * Gets the parameter with the specified <c>name</c> from the query string component of the current <c>window.location</c>.
-		 * @param {String} name The name of the parameter to get
-		 * @param {String} defaultValue The value to return in case the current query string doesn't contain the part with the
-		 * specified <c>name</c> or if that value is blank.
-		 * @returns {String}
-		 */
-		url.getQueryParam = function (name, defaultValue)
-		{
-			return url().getQueryParam(name) || defaultValue;
-		};
-	
-		/**
-		 * Gets the parameter with the specified <c>name</c> from the hash component of the current <c>window.location</c>.
-		 * @param {String} name The name of the parameter to get
-		 * @param {String} defaultValue The value to return in case the current hash doesn't contain the part with the
-		 * specified <c>name</c> or if that value is blank.
-		 * @returns {String}
-		 */
-		url.getHashParam = function (name, defaultValue)
-		{
-			return url().getHashParam(name) || defaultValue;
-		};
-	
-		/**
-		 * Gets the query string component (without the initial hash character) from current <c>window.location</c>.
-		 * @returns {String}
-		 */
-		url.getHash = function ()
-		{
-			return String(location.hash).substring(1);
-		};
-	
-		/**
-		 * Gets the query string component (without the initial question character) from current <c>window.location</c>.
-		 * @returns {String}
-		 */
-		url.getQuery = function ()
-		{
-			return String(location.search).substring(1);
-		};
-	
-		/**
-		 * Sets the value of the specified hash parameter of the current <c>window.location</c>.
-		 *
-		 * If a single argument is passed as an object, it will be treated as a name/value collection. If two values are
-		 * passed, they will be treated a single key/value pair.
-		 * @example setHashParam("color", "red");
-		 * @example setHashParam({ color: "red", size: "xlarge" });
-		 */
-		url.setHashParam = function ()
-		{
-			var current = url(location.href);
-			if (arguments.length == 2)
-			{
-				current.setHashParam(arguments[0], arguments[1]);
-			}
-			else if (arguments.length == 1)
-			{
-				if ($type.isObject(arguments[0]))
-				{
-					for (var name in arguments[0])
-						if (arguments[0].hasOwnProperty(name))
-							current.setHashParam(name, arguments[0][name]);
-				}
-				else
-				{
-					current.setHashParam(arguments[0], $string.EMPTY);
-				}
-			}
-			else
-			{
-				return;
-			}
-	
-			url.setHash(current.getHash());
-		};
-	
-		/**
-		 * Sets the complete hash of the current <c>window.location</c>.
-		 * @param {String} hash The value to set.
-		 */
-		url.setHash = function (hash)
-		{
-			// ensure that setting the location hash to empty doesn't cause the page to scroll to the top
-			if (hash == $string.EMPTY)
-				hash = url.EMPTY_HASH;
-	
-			window.location.hash = hash;
-		};
-	
-		/**
-		 * Removes the parameter with the specified <c>name</c> from the hash component of the current <c>window.location</c>.
-		 * @param {String} name The name of the parameter to remove.
-		 */
-		url.removeHashParam = function (name)
-		{
-			var current = url(location);
-			current.removeHashParam(name);
-	
-			url.setHash(current.getHash());
-		};
-	
-		/**
-		 * Gets the file extension from the specified <c>path</c>.
-		 * @param {String} path
-		 * @returns {String}
-		 */
-		url.getFileExtension = function (path)
-		{
-			var dotIndex = path ? path.lastIndexOf(".") : -1;
-			return (dotIndex > -1 ? path.slice(dotIndex + 1) : "");
-		};
-	
-		/**
-		 * Gets the file name part of the specified <c>path</c>.
-		 * @param {String} path
-		 * @returns {String}
-		 */
-		url.getFileName = function (path)
-		{
-			return String(path).match(/[^\\\/]*$/)[0];
-		};
-	
-		/**
-		 * Gets an object with properties initialized with values as parsed from name/value pairs in the
-		 * specified <c>queryString</c>.
-		 * @param {String} queryString The string to parse.
-		 * @param {Object} options Optional object that specifies the parse options.
-		 * <dl>
-		 *  <dt>separator</dt>
-		 *    <dd>the character to use as the name/value pair separator within url query strings and hashes</dd>
-		 *  <dt>equals</dt>
-		 *    <dd>the character to use as the names/value separator within url query strings and hashes.</dd>
-		 *  <dt>equals</dt>
-		 *    <dd>the character to use as the names/value separator within url query strings and hashes.</dd>
-		 * </dl>
-		 * @returns {Object}
-		 */
-		url.parseQuery = function (queryString, options)
-		{
-			if (!queryString)
-				return {};
-	
-			var opt = $.extend({
-					separator: url.DEFAULT_SEPARATOR,
-					equals: url.DEFAULT_EQUALS
-				},
-				options || {});
-	
-			var param = String(queryString).split(opt.separator);
-			var query = {};
-			for (var i = 0; i < param.length; i++)
-			{
-				if (param[i].length == 0)
-					continue;
-	
-				var pair = param[i].split(opt.equals);
-				var key = pair[0];
-				var itemValue = pair[1] || $string.EMPTY;
-	
-				if (query[key] != null)
-				{
-					if (!$type.isArray(query[key]))
-						query[key] = [query[key]];
-	
-					query[key].push(itemValue);
-				}
-				else
-				{
-					query[key] = itemValue;
-				}
-			}
-	
-			return query;
-		};
-	
-		/**
-		 * Serializes the names and values of properties of <c>params</c> into a string of name/value pairs.
-		 * @param {Object} params The object to serialize.
-		 * @param {Object} [options] Object that specifies the serialization options.
-		 * <dl>
-		 *  <dt>separator</dt>
-		 *    <dd>the character to use as the pair separator</dd>
-		 *  <dt>equals</dt>
-		 *    <dd>the character to use as the names/value separator</dd>
-		 *  <dt>encode</dt>
-		 *    <dd>if <c>true</c> the resulting string will be URL encoded.</dd>
-		 * </dl>
-		 * @return {String}
-		 */
-		url.serializeParams = function (params, options)
-		{
-			if (params == null)
-				return null;
-	
-			var opt = $.extend({
-				separator: url.DEFAULT_SEPARATOR,
-				equals: url.DEFAULT_EQUALS,
-				encode: false
-			},
-				options || {});
-	
-			var result = [];
-			for (var name in params)
-			{
-				if (!params.hasOwnProperty(name))
-					continue;
-	
-				var itemName = opt.encode ? encodeURIComponent(name) : name;
-				var itemValue = opt.encode ? encodeURIComponent(params[name] || $string.EMPTY) : params[name];
-				if (itemValue)
-					result.push(itemName + opt.equals + itemValue);
-				else
-					result.push(itemName);
-			}
-	
-			var value = result.join(opt.separator);
-			if (opt.prefix && value.length)
-				return $string.concat(opt.prefix, value);
-	
-			return value;
-		};
-	
-		url.qualify = function (value)
-		{
-			var baseHref = $("base[href]").attr("href") || document.location.href;
-			return url(baseHref).qualify(value);
-		};
-	
-		return url;
-	};
-	
 	
 	/**
 	 * @copyright 2012 Igor France
@@ -5839,8 +5295,8 @@ var one = (function one($)
 		 * Registers a control.
 		 * @param {String} expression The css expression string for elements that should be
 		 * assigned the control.
-		 * @param {Object} options Optional contructor options to use when creating elements.
 		 * @param {Object} control The control factory object.
+		 * @param {Object} options Optional contructor options to use when creating elements.
 		 */
 		this.register = function register(expression, control, options)
 		{
@@ -5993,7 +5449,12 @@ var one = (function one($)
 	
 			if (depth < 10)
 			{
-				var elements = $(expressions.join(", "), parent || document);
+				var selectControls = expressions.join(", ");
+				var elements = $(selectControls, parent || document);
+				if (parent)
+				{
+					elements = elements.add($(parent).filter(selectControls));
+				}
 	
 				if (elements.length > 0)
 				{
@@ -6212,11 +5673,13 @@ var one = (function one($)
 		 * @type {RegExp}
 		 */
 		var RX_SIMPLE_EXPRESSION = /@\.([\w$.]+)/g;
-		var RX_EXPRESSION = /@\(([^()]+)\)/g;
+		var RX_EVAL_EXPRESSION = /@\(([^()]+)\)/g;
 		var RX_LOOPSTART = /^loopstart_(\d+)$/;
 		var RX_LOOPEND = /^loopend$/;
-		var RX_EXPRSTART = /^expr:\$\{([^{}]+)}$/;
-		var RX_EXPREND = /^exprend$/;
+		var RX_EXPR_START = /^expr:(@\(.+\))$/;
+		var RX_PLACEHOLDER_START = /^placeholder:@.(.+)$/;
+		var RX_EXPR_END = /^exprend$/;
+		var RX_MODEL_EVAL_EXPRESSION = /#\.([\w$.]+)/g;
 	
 		var initialized = [];
 	
@@ -6263,7 +5726,8 @@ var one = (function one($)
 		ModelBinder.prototype.setModel = function (model)
 		{
 			this._model = model;
-			bindNode.call(this, this.element, this._model);
+			if (this.element)
+				bindNode.call(this, this.element, this._model);
 		};
 	
 		ModelBinder.prototype.model = function (value)
@@ -6289,7 +5753,7 @@ var one = (function one($)
 	
 		ModelBinder.prototype.evaluateExpression = function (expression)
 		{
-			return evaluateExpression(expression, this._model);
+			return bindString(expression, this._model);
 		};
 	
 		ModelBinder.prototype.getValue = function (expression)
@@ -6321,7 +5785,29 @@ var one = (function one($)
 	
 		function prepareElementNode(node)
 		{
-			for (var i = 0; i < node.childNodes.length; i++)
+			var index, i;
+			var foreachChild = node.getAttribute("data-foreach-child");
+			if (foreachChild)
+			{
+				index = -1;
+				for (i = 0; i < node.childNodes.length; i++)
+				{
+					var child = node.childNodes[i];
+					if (child.nodeType == nodeType.ELEMENT && child.getAttribute("data-child") == foreachChild)
+					{
+						index = i + 1;
+						break;
+					}
+				}
+	
+				if (index != -1)
+				{
+					for (i = node.childNodes.length - 1; i >= index; i--)
+						node.removeChild(node.childNodes[i]);
+				}
+			}
+	
+			for (i = 0; i < node.childNodes.length; i++)
 					prepareNode.call(this, node.childNodes[i]);
 	
 			var foreach = node.getAttribute("data-foreach");
@@ -6330,7 +5816,7 @@ var one = (function one($)
 	
 			if (foreach)
 			{
-				var index = this.loops.length;
+				index = this.loops.length;
 				var commentStart = node.ownerDocument.createComment("loopstart_" + index);
 				var commentEnd = node.ownerDocument.createComment("loopend");
 				node.parentNode.insertBefore(commentStart, node);
@@ -6339,6 +5825,8 @@ var one = (function one($)
 	
 				node.removeAttribute("data-foreach");
 				this.loops.push({ element: node, expression: foreach });
+	
+				attachEvents.call(this, node, null, true);
 			}
 			else
 			{
@@ -6351,47 +5839,50 @@ var one = (function one($)
 	
 		function prepareTextNode(node)
 		{
-			var text = node.nodeValue;
-			var expressions = [RX_SIMPLE_EXPRESSION, RX_EXPRESSION];
-	
-			for (var i = 0; i < expressions.length; i++)
-			{
-				var expression = expressions[i];
-				if (text.match(expression))
-				{
-					var start = 0;
-					var slices = [];
-					var keys = [];
-	
-					// run greedy RX_EXPRESSION against the node text to find all the placeholders and their insert points
-					text.replace(expression, function (match, key, index)
-					{
-						var slice = text.substring(start, index);
-						slices.push(slice);
-						keys.push(key);
-						start = index + match.length;
-					});
-	
-					// now replace the placeholders with comments
-					for (var i = 0; i < slices.length; i++)
-					{
-						node.parentNode.insertBefore(node.ownerDocument.createTextNode(slices[i]), node);
-						node.parentNode.insertBefore(node.ownerDocument.createComment("expr:${" + keys[i] + "}"), node);
-						node.parentNode.insertBefore(node.ownerDocument.createComment("exprend"), node);
-					}
-	
-					node.parentNode.removeChild(node);
-				}
-	
-			}
+			var handled = prepareTextComments(node, RX_EVAL_EXPRESSION, "expr");
+			if (!handled)
+				prepareTextComments(node, RX_SIMPLE_EXPRESSION, "placeholder");
 		}
 	
-		function attachEvents(element)
+		function prepareTextComments(node, expression, type)
+		{
+			var text = node.nodeValue;
+			if (text.match(expression))
+			{
+				var start = 0;
+				var slices = [];
+				var keys = [];
+	
+				// run greedy RX_EXPRESSION against the node text to find all the placeholders and their insert points
+				text.replace(expression, function (match, key, index)
+				{
+					var slice = text.substring(start, index);
+					slices.push(slice);
+					keys.push(match);
+					start = index + match.length;
+				});
+	
+				// now replace the placeholders with comments
+				for (var i = 0; i < slices.length; i++)
+				{
+					node.parentNode.insertBefore(node.ownerDocument.createTextNode(slices[i]), node);
+					node.parentNode.insertBefore(node.ownerDocument.createComment(type + ":" + keys[i]), node);
+					node.parentNode.insertBefore(node.ownerDocument.createComment("exprend"), node);
+				}
+	
+				node.parentNode.removeChild(node);
+				return true;
+			}
+	
+			return false;
+		}
+	
+		function attachEvents(element, model, registerOnly)
 		{
 			for (var i = 0; i < element.childNodes.length; i++)
 			{
 				if (element.childNodes[i].nodeType == nodeType.ELEMENT)
-					attachEvents.call(this, element.childNodes[i]);
+					attachEvents.call(this, element.childNodes[i], model, registerOnly);
 			}
 	
 			for (i = 0; i < element.attributes.length; i++)
@@ -6411,65 +5902,33 @@ var one = (function one($)
 					}
 				});
 	
-				attachEvent.call(this, element, sourceEventName, targetEventName, params);
+				this.registerEvent(targetEventName);
+				if (registerOnly)
+					continue;
+	
+				params = params.map(function (param)
+				{
+					return bindString(param, model);
+				});
+	
+				var $element = $(element);
+				$element.data("emit-" + sourceEventName, targetEventName);
+				$element.data("emit-params", params);
+				$element.off(sourceEventName).on(sourceEventName, $.proxy(onEventHandler, this));
 			}
 		}
 	
-		function attachEvent(element, eventName, emitEventName, eventParams)
+		function onEventHandler(e)
 		{
-			this.registerEvent(emitEventName);
-	
-			var $element = $(element);
-			$element.data("emit-" + eventName, emitEventName);
-			$element.data("emit-params", eventParams);
-			$element.off(eventName).on(eventName, $.proxy(viewEventHandler, this));
-		}
-	
-		function viewEventHandler(e)
-		{
-			var $element = $(e.target);
+			var $element = $(e.currentTarget);
 			var emitEventName = $element.data("emit-" + e.type);
-			var eventParams = $element.data("emit-params");
-			var params = [];
+			var eventParams = $element.data("emit-params") || {};
 	
-			if (eventParams)
-			{
-				var self = this;
-				params = eventParams.map(function (param)
-				{
-					return evaluateExpression(param, self.model);
-				});
-			}
-	
-			var event = new $evt.Event(this, emitEventName, params);
+			var event = new $evt.Event(this, emitEventName, eventParams);
 			event.originalEvent = e;
-			this.fire(emitEventName, event);
-			console.log("Firing {0} from event {1} with params: {2}".format(emitEventName, e.type, params));
 	
-		}
-	
-		function bindNode(node, model)
-		{
-			var type = node.nodeType;
-			if (!nodeBinders[type])
-				return;
-	
-			var nodeBinder = selectNodeBinder(node, nodeBinders[type]);
-			if (nodeBinder)
-				nodeBinder.call(this, node, model);
-		}
-	
-		function bindString(template, model)
-		{
-			return template
-				.replace(RX_EXPRESSION, function (match, expression)
-				{
-					return evaluateExpression(expression, model);
-				})
-				.replace(RX_SIMPLE_EXPRESSION, function (match, expression)
-				{
-					return evaluateExpression(expression, model);
-				});
+			this.fire(event);
+			this.update();
 		}
 	
 		function selectNodeBinder(node, handlers)
@@ -6505,7 +5964,7 @@ var one = (function one($)
 							match = nodeName.substring(nodeName.length - (name.length - 1), nodeName.length) == name.substring(1);
 	
 						else
-							match = handlers[i].name == node.nodeName;
+							match = name == node.nodeName;
 	
 						if (match)
 							return handlers[i].handler;
@@ -6518,6 +5977,173 @@ var one = (function one($)
 				return handlers["*"].handler;
 		}
 	
+		function bindNode(node, model)
+		{
+			var type = node.nodeType;
+			if (!nodeBinders[type])
+				return;
+	
+			var nodeBinder = selectNodeBinder(node, nodeBinders[type]);
+			if (nodeBinder)
+				nodeBinder.call(this, node, model);
+		}
+	
+		function bindString(value, model)
+		{
+			return evaluateExpression(
+				evaluateExpressions(
+					substitutePlaceholders(value, model), model), model);
+		}
+	
+		function bindAttribute(attr, model)
+		{
+			var attrName = attr.name.substring(10);
+			var processed = bindString(attr.value, model);
+			attributeParent(attr).setAttribute(attrName, processed);
+		}
+	
+		function bindClassAttribute(node, model)
+		{
+			var element = attributeParent(node);
+			var classObj = {};
+			try
+			{
+				classObj = JSON.parse(node.nodeValue);
+			}
+			catch(error)
+			{
+				console.debug(node.nodeValue);
+				console.error(error);
+				return;
+			}
+	
+			var $el = $(element);
+			for (var className in classObj)
+			{
+				var expressionResult = bindString(classObj[className], model);
+	
+				var classOn = (expressionResult == true || expressionResult == "true");
+				$el.toggleClass(className, classOn);
+			}
+		}
+	
+		function bindVisibilityAttribute(node, model)
+		{
+			var attrName = node.nodeName;
+			var expressionResult = bindString(node.nodeValue, model);
+	
+			var valid = (expressionResult == true || expressionResult == "true");
+			var show = attrName == "data-visible";
+	
+			$(attributeParent(node)).toggle(show ? valid : !valid);
+		}
+	
+		function bindBindAttribute(node, model)
+		{
+			var element = attributeParent(node);
+			element.innerHTML = getValue(node.nodeValue, model);
+		}
+	
+		function bindElement(element, model)
+		{
+			//reset(element);
+	
+			var i;
+			var nodes = [];
+	
+			for (i = 0; i < element.attributes.length; i++)
+				bindNode.call(this, element.attributes[i], model);
+	
+			for (i = 0; i < element.childNodes.length; i++)
+				nodes.push(element.childNodes[i]);
+	
+			var loopWalking = false;
+			for (i = 0; i < nodes.length; i++)
+			{
+				var node = nodes[i];
+	
+				if (isLoopStart(node) && !isLoopEnd(nodes[i + 1]))
+				{
+					bindNode.call(this, node, model);
+					loopWalking = true;
+				}
+				else if (isLoopEnd(node))
+				{
+					loopWalking = false;
+				}
+	
+				if (!loopWalking)
+					bindNode.call(this, node, model);
+			}
+		}
+	
+		function bindExpressionComment(node, model)
+		{
+			cleanupGeneratedContent(node);
+	
+			var expression = node.nodeValue.match(RX_EXPR_START)[1];
+			var value = evaluateExpressions(expression, model);
+			var textNode = node.ownerDocument.createTextNode(value);
+			node.parentNode.insertBefore(textNode, node.parentNode.childNodes[indexOf(node) + 1]);
+		}
+	
+		function bindPlaceholderComment(node, model)
+		{
+			var expression = node.nodeValue.match(RX_PLACEHOLDER_START)[1];
+			var currentValue = getCommentText.call(this, node);
+			var value = getValue(expression, model);
+	
+			if (value != currentValue)
+			{
+				cleanupGeneratedContent(node);
+				var textNode = node.ownerDocument.createTextNode(value);
+				node.parentNode.insertBefore(textNode, node.parentNode.childNodes[indexOf(node) + 1]);
+			}
+		}
+	
+		function bindLoopComment(node, model)
+		{
+			var loopIndex = node.nodeValue.match(RX_LOOPSTART)[1];
+			var loop = this.loops[loopIndex];
+			var collection = getValue(loop.expression, model);
+	
+			if (JSON.stringify(loop.lastCollection) == JSON.stringify(collection))
+				return;
+	
+			cleanupGeneratedContent(node);
+	
+			loop.lastCollection = collection;
+			var following = node.parentNode.childNodes[indexOf(node) + 1];
+			var index = 0;
+			for (var key in collection)
+			{
+				if (!collection.hasOwnProperty(key))
+					continue;
+	
+				var iterNode = loop.element.cloneNode(true);
+				iterNode._generated = true;
+				var iterationModel = $.extend({}, model);
+				if ($type.isObject(collection[key]))
+					iterationModel = $.extend(iterationModel, collection[key]);
+	
+				iterationModel = $.extend(iterationModel,
+				{
+					_: collection[key],
+					$index: index,
+					$current: collection[key],
+					$key: key
+				});
+	
+				bindNode.call(this, iterNode, iterationModel);
+				attachEvents.call(this, iterNode, iterationModel);
+	
+				var inserted = node.parentNode.insertBefore(iterNode, following);
+				one.controls.update(inserted);
+	
+				index += 1;
+			}
+		}
+	
 		function reset(element)
 		{
 			var comments = [];
@@ -6526,7 +6152,7 @@ var one = (function one($)
 				var node = element.childNodes[i];
 				if (node.nodeType == nodeType.COMMENT)
 				{
-					if (node.nodeValue.match(RX_LOOPSTART) || node.nodeValue.match(RX_EXPRSTART))
+					if (node.nodeValue.match(RX_LOOPSTART) || node.nodeValue.match(RX_EXPR_START)  || node.nodeValue.match(RX_PLACEHOLDER_START))
 						comments.push(node);
 				}
 			}
@@ -6547,12 +6173,22 @@ var one = (function one($)
 			}
 		}
 	
-		function cleanupGeneratedContent(commentStartNode)
+		function getCommentText(commentStartNode)
 		{
-			var endExpression = commentStartNode.nodeValue.match(RX_LOOPSTART) ? RX_LOOPEND : RX_EXPREND;
+			var nodes = getCommentNodes.call(this, commentStartNode);
+			var text = [];
+			for (var i = 0; i < nodes.length; i++)
+				text.push(nodes[i].textContent);
+	
+			return text.join("");
+		}
+	
+		function getCommentNodes(commentStartNode)
+		{
+			var endExpression = commentStartNode.nodeValue.match(RX_LOOPSTART) ? RX_LOOPEND : RX_EXPR_END;
 	
 			var parent = commentStartNode.parentNode;
-			var elements = [];
+			var nodes = [];
 			var capturing = false;
 			for (var i = 0; i < parent.childNodes.length; i++)
 			{
@@ -6568,42 +6204,68 @@ var one = (function one($)
 					if (node.nodeType == nodeType.COMMENT && node.nodeValue.match(endExpression))
 						break;
 	
-					elements.push(node);
+					nodes.push(node);
 				}
 			}
 	
-			for (var i = 0; i < elements.length; i++)
-				parent.removeChild(elements[i]);
+			return nodes;
 		}
 	
-		function evaluateExpression(expression, model)
+		function cleanupGeneratedContent(commentStartNode)
 		{
-			var parts = expression.trim().split(" ");
-			for (var i = 0; i < parts.length; i++)
-			{
-				if (isValidModelProperty(parts[i], model))
-				{
-					var value = getValue(parts[i], model);
-					if (value == undefined || value == null)
-						value = "";
+			var nodes = getCommentNodes.call(this, commentStartNode);
+			var parent = commentStartNode.parentNode;
 	
-					parts[i] = value;
-				}
+			for (var i = 0; i < nodes.length; i++)
+				parent.removeChild(nodes[i]);
+		}
+	
+		function evaluateExpressions(text, model)
+		{
+			while (text.match(RX_EVAL_EXPRESSION))
+			{
+				text = text.replace(RX_EVAL_EXPRESSION, function (match, expression)
+				{
+					return evaluateExpression(expression, model);
+				});
 			}
 	
-			expression = parts.join(" ");
-			if (parts.length == 1)
-				return expression;
+			return text; //evaluateExpression(text, model);
+		}
 	
+		function substitutePlaceholders(expression, model)
+		{
+			return expression.replace(RX_SIMPLE_EXPRESSION, function (match, key)
+			{
+				if (isValidModelProperty(key, model))
+				{
+					return defaultIfNull(getValue(key, model));
+				}
+			});
+		}
+	
+		function evaluateExpression(text, model)
+		{
+			var expression = substituteExpression(text, model);
 			try
 			{
-				return eval(expression);
+				with (model)
+				{
+					return eval(expression);
+				}
 			}
 			catch(error)
 			{
 				console.error(expression + ": " + error);
 				return error;
 			}
+		}
+	
+		function substituteExpression(text, model)
+		{
+			var parts = text.split(/\s/);
+			parts.map(function ($) { return getValue($, model); });
+			return parts.join(" ");
 		}
 	
 		function indexOf(node)
@@ -6617,7 +6279,21 @@ var one = (function one($)
 			return -1;
 		}
 	
-		function getValue(key, model)
+		function getValue(text, model)
+		{
+			if (text.match(RX_EVAL_EXPRESSION))
+			{
+				return evaluateExpressions(RegExp.$1, model);
+			}
+			else if (isValidModelProperty(text, model))
+			{
+				return getModelValue(text, model);
+			}
+	
+			return text;
+		}
+	
+		function getModelValue(key, model)
 		{
 			if (model[key])
 				return model[key];
@@ -6635,7 +6311,18 @@ var one = (function one($)
 				result = currentObject;
 			}
 	
-			return result;
+			return defaultIfNull(result);
+		}
+	
+		function defaultIfNull(value, defaultValue)
+		{
+			if (defaultValue == undefined || defaultValue == null)
+				defaultValue = "";
+	
+			if (value == undefined || value == null)
+				value = defaultValue;
+	
+			return value;
 		}
 	
 		function isValidModelProperty(name, model)
@@ -6644,138 +6331,153 @@ var one = (function one($)
 			return model[key1] != undefined;
 		}
 	
+		function isLoopStart(node)
+		{
+			return node.nodeType == nodeType.COMMENT && node.nodeValue.match(RX_LOOPSTART) != null;
+		}
+	
+		function isLoopEnd(node)
+		{
+			return node.nodeType == nodeType.COMMENT && node.nodeValue.match(RX_LOOPEND) != null;
+		}
+	
 		function attributeParent(attr)
 		{
 			return attr.parentNode || attr.ownerElement;
 		}
 	
-		function defaultAttributeBinder(attr, model)
-		{
-			var attrName = attr.name.substring(10);
-			if (attr.value.match(RX_EXPRESSION))
-			{
-				var processed = bindString(attr.value, model);
-				attributeParent(attr).setAttribute(attrName, processed);
-			}
-		}
-	
-		function classAttributeBinder(node, model)
-		{
-			var element = attributeParent(node);
-			var classSpec = element.getAttribute("data-class");
-			var classObj = {};
-			try
-			{
-				classObj = JSON.parse(classSpec);
-			}
-			catch(error)
-			{
-				console.debug(classSpec);
-				console.error(error);
-				return;
-			}
-	
-			var $el = $(element);
-			for (var className in classObj)
-			{
-				var expressionResult = evaluateExpression(classObj[className], model);
-				var classOn = (expressionResult == true || expressionResult == "true");
-				$el.toggleClass(className, classOn);
-			}
-		}
-	
-		function visibilityAttributeBinder(node, model)
-		{
-			var attrName = node.nodeName;
-			var expressionText = element.getAttribute(attrName);
-			var expressionResult = evaluateExpression(bindString(expressionText, model), model);
-	
-			var valid = (expressionResult == true || expressionResult == "true");
-			var show = attrName == "data-visible";
-	
-			$(attributeParent(node)).toggle(show ? valid : !valid);
-		}
-	
-		function bindingAttributeBinder(node, model)
-		{
-			var element = attributeParent(node);
-			element.innerHTML = evaluateExpression.call(this, node.nodeValue, model);
-		}
-	
-		function defaultElementBinder(element, model)
-		{
-			reset(element);
-	
-			var i;
-			var nodes = [];
-	
-			for (i = 0; i < element.attributes.length; i++)
-				bindNode.call(this, element.attributes[i], model);
-	
-			for (i = 0; i < element.childNodes.length; i++)
-				nodes.push(element.childNodes[i]);
-	
-			for (i = 0; i < nodes.length; i++)
-				bindNode.call(this, nodes[i], model);
-		}
-	
-		function expressionCommentBinder(node, model)
-		{
-			cleanupGeneratedContent(node);
-	
-			var expression = node.nodeValue.match(RX_EXPRSTART)[1];
-			var value = getValue(expression, model);
-			var textNode = node.ownerDocument.createTextNode(value);
-			node.parentNode.insertBefore(textNode, node.parentNode.childNodes[indexOf(node) + 1]);
-		}
-	
-		function loopCommentBinder(node, model)
-		{
-			cleanupGeneratedContent(node);
-	
-			var loopIndex = node.nodeValue.match(RX_LOOPSTART)[1];
-			var loop = this.loops[loopIndex];
-			var collection = getValue(loop.expression, model);
-			var following = node.parentNode.childNodes[indexOf(node) + 1];
-			var index = 0;
-			for (var key in collection)
-			{
-				if (!collection.hasOwnProperty(key))
-					continue;
-	
-				var instance = loop.element.cloneNode(true);
-				var iterationModel = $.extend({}, model);
-				if ($type.isObject(collection[key]))
-					iterationModel = $.extend(iterationModel, collection[key]);
-	
-				iterationModel = $.extend(iterationModel,
-				{
-					_: collection[key],
-					$index: index,
-					$current: collection[key],
-					$key: key
-				});
-	
-				bindNode.call(this, instance, iterationModel);
-				attachEvents.call(this, instance);
-	
-				node.parentNode.insertBefore(instance, following);
-				index += 1;
-			}
-		}
-	
-		ModelBinder.registerNodeBinder(nodeType.ATTRIBUTE, { name: "data-attr-*", handler: defaultAttributeBinder });
-		ModelBinder.registerNodeBinder(nodeType.ATTRIBUTE, { name: "data-class", handler: classAttributeBinder});
-		ModelBinder.registerNodeBinder(nodeType.ATTRIBUTE, { name: "data-bind", handler: bindingAttributeBinder});
-		ModelBinder.registerNodeBinder(nodeType.ATTRIBUTE, { name: ["data-visible", "data-hidden"], handler: visibilityAttributeBinder});
-		ModelBinder.registerNodeBinder(nodeType.ELEMENT, { name: "*", handler: defaultElementBinder });
-		ModelBinder.registerNodeBinder(nodeType.COMMENT, { expression: RX_EXPRSTART, handler: expressionCommentBinder });
-		ModelBinder.registerNodeBinder(nodeType.COMMENT, { expression: RX_LOOPSTART, handler: loopCommentBinder });
+		ModelBinder.registerNodeBinder(nodeType.ATTRIBUTE, { name: "data-attr-*", handler: bindAttribute });
+		ModelBinder.registerNodeBinder(nodeType.ATTRIBUTE, { name: "data-class", handler: bindClassAttribute});
+		ModelBinder.registerNodeBinder(nodeType.ATTRIBUTE, { name: "data-bind", handler: bindBindAttribute});
+		ModelBinder.registerNodeBinder(nodeType.ATTRIBUTE, { name: ["data-visible", "data-hidden"], handler: bindVisibilityAttribute});
+		ModelBinder.registerNodeBinder(nodeType.ELEMENT, { name: "*", handler: bindElement });
+		ModelBinder.registerNodeBinder(nodeType.COMMENT, { expression: RX_EXPR_START, handler: bindExpressionComment });
+		ModelBinder.registerNodeBinder(nodeType.COMMENT, { expression: RX_PLACEHOLDER_START, handler: bindPlaceholderComment });
+		ModelBinder.registerNodeBinder(nodeType.COMMENT, { expression: RX_LOOPSTART, handler: bindLoopComment });
 	
 		return (ModelBinder);
 	
 	}());
 	
+	
+	/**
+	 * Click handler
+	 * @param element
+	 * @param handler
+	 * @constructor
+	 * @extends HtmlControl;
+	 */
+	var FastClick = HtmlControl.extend(function (element, handler)
+	{
+		this.construct(element);
+	
+		this.handler = handler;
+	
+		this.eventHandler = $.proxy(this.handleEvent, this);
+		this.$element.on("touchstart click", this.eventHandler);
+	});
+	FastClick.coordinates = [];
+	
+	FastClick.preventGhostClick = function (x, y)
+	{
+	  FastClick.coordinates.push(x, y);
+	  window.setTimeout(FastClick.pop, 2500);
+	};
+	
+	FastClick.pop = function()
+	{
+	  FastClick.coordinates.splice(0, 2);
+	};
+	
+	FastClick.onDocumentClick = function (e)
+	{
+		for (var i = 0; i < FastClick.coordinates.length; i += 2)
+		{
+	    var x = FastClick.coordinates[i];
+	    var y = FastClick.coordinates[i + 1];
+	    if (Math.abs(e.clientX - x) < 25 && Math.abs(e.clientY - y) < 25)
+	    {
+	      e.stopPropagation();
+	      e.preventDefault();
+	    }
+	  }
+	};
+	
+	/**
+	 * Routes events to appropriate handlers
+	 * @param {Event} event
+	 */
+	FastClick.prototype.handleEvent = function (event)
+	{
+		switch (event.type)
+		{
+			case 'touchstart': this.onTouchStart(event); break;
+			case 'touchmove': this.onTouchMove(event); break;
+			case 'touchend': this.onClick(event); break;
+			case 'click': this.onClick(event); break;
+	  }
+	};
+	
+	FastClick.prototype.reset = function()
+	{
+		this.$element.off("touchend", this.eventHandler);
+		$(document).off("touchmove", this.eventHandler);
+	};
+	
+	FastClick.prototype.onTouchStart = function(e)
+	{
+		var event = e.originalEvent || e;
+		event.stopPropagation();
+	
+		this.$element.on("touchend", this.eventHandler);
+		$(document).on("touchmove", this.eventHandler);
+	
+		this.startX = event.touches[0].clientX;
+		this.startY = event.touches[0].clientY;
+	};
+	
+	FastClick.prototype.onTouchMove = function(e)
+	{
+		var event = e.originalEvent || e;
+		if (
+			Math.abs(event.touches[0].clientX - this.startX) > 10 ||
+			Math.abs(event.touches[0].clientY - this.startY) > 10)
+		{
+			this.reset();
+		}
+	};
+	
+	FastClick.prototype.onClick = function(e)
+	{
+	  e.stopPropagation();
+	
+	  this.reset();
+	  this.handler(e);
+	
+	  if (e.type == 'touchend')
+	    FastClick.preventGhostClick(this.startX, this.startY);
+	};
+	
+	document.addEventListener("click", FastClick.onDocumentClick, true);
+	
+	$.fastclick = function (selection, handler)
+	{
+		$(selection).fastclick(handler);
+	};
+	
+	$.fn.fastclick = function ()
+	{
+		var handler = arguments[0];
+	
+		this.each(function ()
+		{
+			var $elem = $(this);
+			if (!$elem.data("fastclick"))
+				$elem.data("fastclick", new FastClick($elem, handler));
+		});
+	
+		return this;
+	};
 	
 	/**
 	 * @copyright 2012 Igor France
