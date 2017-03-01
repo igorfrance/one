@@ -1,0 +1,243 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head>
+		<title>one controls</title>
+		<script type="text/javascript" src="../lib/jquery-2.0.3.min.js"></script>
+		<script type="text/javascript" src="../lib/jquery.mockjax.js"></script>
+		<script type="text/javascript" src="../lib/qunit-1.11.0.js"></script>
+		<script type="text/javascript" src="../../dist/one.js"></script>
+		<link rel="stylesheet" href="../css/test.css"/>
+		<link rel="stylesheet" href="../lib/qunit-1.11.0.css"/>
+		<style>
+
+			.testing-area  { min-height: 200px; }
+			.testing-area .block { display: inline-block; width: 250px; }
+
+			.odd { background: #cdf1e4; }
+			.even { background: #f1e2cf; }
+
+		</style>
+	</head>
+	<body>
+		<div id="wrapper">
+			<div id="container">
+				<div id="home_perspective">
+					<div id="qunit"></div>
+					<div id="qunit-fixture"></div>
+					<div class="testing-area">
+
+						<div class="template">
+							<div class="block">@(colors[index])</div>
+							<div class="block person1 phone" data-name="person1.phone">
+								<ul>
+									<li data-foreach="person1.phone" data-class='{ "odd": "@($index % 2 == 1)", "even": "@($index % 2 == 0)" }'>
+										<span>@.$index: @._</span>
+									</li>
+								</ul>
+							</div>
+							<div class="block person1 data">
+								<ul>
+									<li class="first" data-emit-click="firstname('Igor', 2, 6 + 8)">First name: @.person1.firstName</li>
+									<li class="last">Last name: @.person1.lastName</li>
+									<li class="birthdate">Date of birth: @.person1.dateOfBirth</li>
+									<li class="birthplace" data-visible="'@.person1.lastName' == 'Etznarph'">Place of birth: @.person1.placeOfBirth</li>
+								</ul>
+							</div>
+							<div class="block person1 email">
+								<ul>
+									<li data-foreach="person1.email">
+										<span>@.$index: @._</span>
+									</li>
+								</ul>
+							</div>
+							<div class="block person2 data">
+								<ul>
+									<li class="first">First name: @.person2.firstName</li>
+									<li class="last">Last name: @.person2.lastName</li>
+									<li class="birthdate">Date of birth: @.person2.dateOfBirth</li>
+									<li class="birthplace">Place of birth: <span data-bind="person2.placeOfBirth"></span></li>
+								</ul>
+							</div>
+							<div class="block person2 phone">
+								<ul>
+									<li data-foreach="person2.phone">
+										<span data-attr-title="@._ is @.person2.firstName's @($index + 1) number">@.$index: @._</span>
+									</li>
+								</ul>
+							</div>
+							<div class="block person2 email">
+								<ul>
+									<li data-foreach="person2.email">
+										<span>@._</span>
+									</li>
+								</ul>
+							</div>
+						</div>
+
+						<div class="box"></div>
+						<div class="box"></div>
+						<div class="box"></div>
+
+					</div>
+					<script>
+
+						$(function ()
+						{
+							module("one.controls");
+
+							var $template = $(".testing-area .template");
+							var binder = new one.ModelBinder();
+							binder.initialize($template);
+
+							var model =
+							{
+								colors: ["blue", "red", "yellow", "green"],
+								index: 2,
+								person1:
+								{
+									firstName: "Igor", lastName: "France", dateOfBirth: "29-03-1973", placeOfBirth: "Kassel",
+									phone: ["0624 868 005", "031624 868 005", "020 777 6744"],
+									email: ["igor.france@gmail.com", "igor.france@ing.nl", "i.france@live.nl", "egore@xs4all.nl"]
+								},
+								person2:
+								{
+									firstName: "Droggy", lastName: "Etznarph", dateOfBirth: "37-91-3092", placeOfBirth: "Orion",
+									phone: ["AHAB 868 005", "DONUT 868 005", "PRONTO"],
+									email: ["droggy.etznarph@gmail.com", "droggy.etznarph@ing.nl", "d.etznarph@live.nl", "drogged@xs4all.nl"]
+								}
+							};
+
+
+							test("ControlRegistry", function runTest()
+							{
+								var foundBoxes = 0;
+
+								var box = (function ()
+								{
+									var Box = one.HtmlControl.extend(function ($element, settings)
+									{
+										this.construct($element);
+										foundBoxes++;
+									});
+
+									var BoxSettings = one.Settings.extend(function ($element, settings)
+									{
+										this.interval = this.getNumber("interval", $element, settings, 1);
+
+									});
+
+									var box = {};
+
+									box.Control = Box;
+									box.Settings = BoxSettings;
+
+									return box;
+
+								})();
+
+
+								var registry = new one.controls.Registry();
+								registry.register(".box", box);
+								registry.update($(document));
+
+								equal(foundBoxes, 3, "There should be three automatically found box elements");
+							});
+
+							test("ModelBinder", function runTest()
+							{
+								binder.setModel(model);
+
+								equal($template.find(".person1.phone li").length, 3, "There should be three phone number elements for person 1");
+								$template.find(".person1.phone li:odd").each(function (i, el)
+								{
+									equal($(el).hasClass("odd"), true, "Odd phone elements should have class name 'odd'");
+								});
+								$template.find(".person1.phone li:even").each(function (i, el)
+								{
+									equal($(el).hasClass("even"), true, "Even phone elements should have class name 'odd'");
+								});
+
+								for (var i = 0; i < model.person1.phone.length; i++)
+								{
+									equal($template.find(".person1.phone li").eq(i).text().trim(),
+										i + ": "+ model.person1.phone[i], "Phone numbers for person should be generated properly");
+								}
+
+								equal($template.find(".person1.email li").length, 4, "There should be four email address elements for person 1");
+
+								ok($template.find(".person1 .first").text().indexOf(model.person1.firstName) !== -1);
+								ok($template.find(".person1 .last").text().indexOf(model.person1.lastName) !== -1);
+								ok($template.find(".person1 .birthdate").text().indexOf(model.person1.dateOfBirth) !== -1);
+								ok($template.find(".person1 .birthplace").text().indexOf(model.person1.placeOfBirth) !== -1);
+
+
+//								var m1 = { person1: { firstName: "Igor", lastName: "France", age: 43, phone: ["0624 8686 005", "020 777 6744"] }};
+//								var b1 = new one.ModelBinder();
+//								b1.setModel(m1);
+//
+//								var phone1 = b1.evaluateExpression("person1.phone[1]");
+//								equal(phone1, "020 777 6744");
+
+								/**
+								 * expressions
+								 *
+								 * data-bind=""
+								 * data-attr-title=""
+								 * data-class=""
+								 * data-visible=""
+								 *
+								 * #text node expressions:
+								 *
+								 *     @.(identifier)
+								 *     @(expression)
+								 *
+								 * supporting functions:
+								 *
+								 *     - getValue -> atomic value
+								 *     - evaluateExpressions
+								 *          split string on empty space,
+								 *          try to substitute/eval each part
+								 *
+								 * #. free_syntax (assumes you are expressing directly):
+								 *
+								 *			hexagram1.description
+								 *
+								 * #. placeholder (is replaced using getValue):
+								 *
+								 *			This is @.hexagram.title
+								 *			This is @(hexagram.title)
+								 *
+								 * #. expression (is processed in parts, evaling each component and then evaling the result too):
+								 *
+								 *      There are @(hexagrams.length + 1) hexagrams here.
+								 *
+								 * The difference between @(hexagram.title) and @(hexagrams.length + 1) is indicated by
+								 * space separated parts in the second expression.
+								 *
+								 * bindTextNode ->
+								 *
+								 *    findAndProcessExpressions
+								 *      (looks for placeholder/expression and calls getValue/evaluateExpressions)
+								 *
+								 * data-bind="hexagram.title" ->
+								 *
+								 *
+								 * substitutePlaceholders -> substituteExpressions
+								  bindAttribute -> evaluateExpressions
+
+
+								 */
+
+
+
+								//console.log(binder.evaluateExpression("@(#.colors[@.index])", model));
+								//ok($template.find(".person1.data .birthplace").text().indexOf(model.person1.placeOfBirth) !== -1);
+							});
+						});
+
+					</script>
+				</div>
+			</div>
+		</div>
+	</body>
+</html>
