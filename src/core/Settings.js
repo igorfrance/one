@@ -55,14 +55,15 @@ Settings.prototype.getValue = function getValue(name, data, override, defaultVal
 	var dataObject = data && data.jquery ? data[0] : data;
 	var overrideObject = override && override.jquery ? override[0] : override;
 
+	var attrName = name.toLowerCase();
 	var result = defaultValue;
 	if ($type.isElement(overrideObject))
 	{
-		if (overrideObject.getAttribute("data-" + name))
-			result = overrideObject.getAttribute("data-" + name);
+		if (overrideObject.getAttribute("data-" + attrName))
+			result = overrideObject.getAttribute("data-" + attrName);
 
-		else if (overrideObject.getAttribute(name))
-			result = overrideObject.getAttribute(name);
+		else if (overrideObject.getAttribute(attrName))
+			result = overrideObject.getAttribute(attrName);
 	}
 	else if (overrideObject && overrideObject[name] != undefined)
 	{
@@ -70,11 +71,11 @@ Settings.prototype.getValue = function getValue(name, data, override, defaultVal
 	}
 	else if ($type.isElement(dataObject))
 	{
-		if (dataObject.getAttribute("data-" + name))
-			result = dataObject.getAttribute("data-" + name);
+		if (dataObject.getAttribute("data-" + attrName))
+			result = dataObject.getAttribute("data-" + attrName);
 
-		else if (dataObject.getAttribute(name))
-			result = dataObject.getAttribute(name);
+		else if (dataObject.getAttribute(attrName))
+			result = dataObject.getAttribute(attrName);
 	}
 	else if (dataObject && dataObject[name] != undefined)
 	{
