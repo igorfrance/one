@@ -42,8 +42,8 @@ var ControlRegistry = Dispatcher.extend(function ControlRegistry()
 	 * Registers a control.
 	 * @param {String} expression The css expression string for elements that should be
 	 * assigned the control.
-	 * @param {Object} options Optional contructor options to use when creating elements.
 	 * @param {Object} control The control factory object.
+	 * @param {Object} options Optional contructor options to use when creating elements.
 	 */
 	this.register = function register(expression, control, options)
 	{
@@ -196,7 +196,12 @@ var ControlRegistry = Dispatcher.extend(function ControlRegistry()
 
 		if (depth < 10)
 		{
-			var elements = $(expressions.join(", "), parent || document);
+			var selectControls = expressions.join(", ");
+			var elements = $(selectControls, parent || document);
+			if (parent)
+			{
+				elements = elements.add($(parent).filter(selectControls));
+			}
 
 			if (elements.length > 0)
 			{
