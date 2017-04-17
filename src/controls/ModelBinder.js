@@ -623,7 +623,7 @@ var ModelBinder = (function ()
 			return getModelValue(text, model);
 		}
 
-		return text;
+		return null;
 	}
 
 	function getModelValue(key, model)
