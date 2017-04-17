@@ -152,6 +152,7 @@ var $drag = (function Dragger()
 		if (position2.left != position1.left || position2.top != position1.top)
 		{
 			moveEvent = $evt.create(dragger, "move", position2);
+			moveEvent.originalEvent = e;
 			moveEvent.target = $target[0];
 
 			dragger.fire(moveEvent);
