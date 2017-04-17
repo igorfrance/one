@@ -4470,6 +4470,7 @@ var one = (function one($)
 			if (position2.left != position1.left || position2.top != position1.top)
 			{
 				moveEvent = $evt.create(dragger, "move", position2);
+				moveEvent.originalEvent = e;
 				moveEvent.target = $target[0];
 	
 				dragger.fire(moveEvent);
@@ -6290,7 +6291,7 @@ var one = (function one($)
 				return getModelValue(text, model);
 			}
 	
-			return text;
+			return null;
 		}
 	
 		function getModelValue(key, model)
